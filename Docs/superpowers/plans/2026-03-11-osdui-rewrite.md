@@ -1727,16 +1727,46 @@ XML format:
 <Action Type="ExternalCall" Run="cmd.exe /c echo hello" SuccessExitCode="0" Variable="OSDResult" />
 ```
 
-Follow the same TDD pattern. Key behavior:
-- `Run` attribute: command line to execute (via `IScriptHost` with `language=L"exe"`)
+Key behavior:
+- `Run` attribute: command line (passed to `IScriptHost::execute` with `language=L"exe"`)
 - `SuccessExitCode`: exit code treated as success (default 0)
-- `Variable`: optional TS var to store exit code
-
-Test: mock `CapturingScriptHost` with `next_exit_code = 0`, verify variable is set.
+- `Variable`: optional TS var to receive the exit code as a string (e.g., `L"0"`)
 
 Create: `core/src/actions/action_external_call.hpp/.cpp`, `tests/test_action_external_call.cpp`
 
-- [ ] **Step 1: Write failing test, header, implementation, register, build, test, commit** (follow Task 12 pattern)
+Required tests — write these before implementing:
+```cpp
+TEST_CASE("ExternalCall: invokes script host with language 'exe'") {
+    MapVariableStore vars; ScriptedDialogPresenter dlg;
+    CapturingScriptHost sh; LiteralConditionEvaluator ce;
+    sh.enqueue(0);  // exit code 0
+    auto ctx = make_ctx(vars, dlg, sh, ce);
+
+    actions::ExternalCallAction action;
+    action.set_run(L"cmd.exe /c echo hello");
+    action.execute(ctx);
+
+    REQUIRE(sh.invocations().size() == 1);
+    REQUIRE(sh.invocations()[0].language == L"exe");  // assert correct dispatch
+    REQUIRE(sh.invocations()[0].script   == L"cmd.exe /c echo hello");
+}
+
+TEST_CASE("ExternalCall: writes exit code to variable as string") {
+    MapVariableStore vars; ScriptedDialogPresenter dlg;
+    CapturingScriptHost sh; LiteralConditionEvaluator ce;
+    sh.enqueue(42);
+    auto ctx = make_ctx(vars, dlg, sh, ce);
+
+    actions::ExternalCallAction action;
+    action.set_run(L"something.exe");
+    action.set_variable(L"OSDResult");
+    action.execute(ctx);
+
+    REQUIRE(vars.has(L"OSDResult", L"42"));
+}
+```
+
+- [ ] **Step 1–5: Write tests first, then implement, register, build, run, commit**
 
 ---
 
@@ -1756,6 +1786,26 @@ Key behavior:
 - Falls through to `Default` if no match
 - Returns `Continue` if no match and no Default
 
+Required tests (write before implementing):
+```cpp
+TEST_CASE("Switch: jumps to matching case") { /* set var = "HP EliteBook", verify JumpTo "hp_step" */ }
+TEST_CASE("Switch: falls through to Default when no match") { /* set var = "Unknown", verify JumpTo "generic_step" */ }
+TEST_CASE("Switch: returns Continue when no match and no Default") { /* set var = "Unknown", no Default node, verify Continue */ }
+TEST_CASE("Switch: returns JumpTo with target id for runner to resolve") {
+    // The Switch action itself only returns the target id string —
+    // it does NOT validate that the id exists. The ActionRunner does.
+    // This test verifies the action returns JumpTo, not Abort.
+    actions::SwitchAction action;
+    action.set_variable(L"OSDModel");
+    action.add_case(L"HP", L"nonexistent_id");
+    vars.set(L"OSDModel", L"HP");
+    auto result = action.execute(ctx);
+    REQUIRE(result.outcome == ActionOutcome::JumpTo);
+    REQUIRE(result.jump_target == L"nonexistent_id");
+    // ActionRunner will abort if nonexistent_id not in graph — tested in test_action_runner.cpp
+}
+```
+
 Create: `core/src/actions/action_switch.hpp/.cpp`, `tests/test_action_switch.cpp`
 
 - [ ] **Step 1–5: TDD pattern, register in config_parser, commit**
@@ -1771,6 +1821,22 @@ XML format:
 
 Key behavior: generates a random string of the specified length into `Variable`. CharSet: `alphanumeric`, `alpha`, `numeric`, `all`.
 
+Required tests (write before implementing):
+```cpp
+TEST_CASE("RandomString: output has correct length") {
+    // generate with Length=12, assert vars["OSDPassword"].length() == 12
+}
+TEST_CASE("RandomString: alphanumeric charset contains only [A-Za-z0-9]") {
+    // generate 100 chars, verify every char is in [A-Za-z0-9]
+    auto val = vars.get(L"OSDPassword").value();
+    REQUIRE(std::ranges::all_of(val, [](wchar_t c) {
+        return std::iswalnum(c);
+    }));
+}
+TEST_CASE("RandomString: numeric charset contains only [0-9]") { /* similar */ }
+TEST_CASE("RandomString: sets variable") { /* verify var is written */ }
+```
+
 Create: `core/src/actions/action_random_string.hpp/.cpp`, `tests/test_action_random_string.cpp`
 
 - [ ] **Step 1–5: TDD pattern, commit**
@@ -1785,11 +1851,45 @@ XML format:
 <Action Type="RegWrite" Hive="HKLM" Key="SOFTWARE\OSD" Value="Deployed" Data="true" Type="REG_SZ" />
 ```
 
-Note: Both use Win32 registry APIs (`RegOpenKeyExW`, `RegQueryValueExW`, `RegSetValueExW`). These ARE Win32 but not UI — they belong in `osdui-core`. Test with real registry keys in a test-only hive, or abstract behind an `IRegistry` interface if needed.
+Both actions use Win32 registry APIs (`RegOpenKeyExW`, `RegQueryValueExW`, `RegSetValueExW`). To keep these testable without real registry state in CI, abstract the registry behind `IRegistry`:
 
-Create: `core/src/actions/action_reg_read.hpp/.cpp`, `core/src/actions/action_reg_write.hpp/.cpp`
+```cpp
+// core/include/osdui/iregistry.hpp
+namespace osdui {
+struct IRegistry {
+    virtual ~IRegistry() = default;
+    virtual std::optional<std::wstring> read(HKEY hive, std::wstring_view key,
+                                              std::wstring_view value) const = 0;
+    virtual void write(HKEY hive, std::wstring_view key,
+                       std::wstring_view value, std::wstring_view data) = 0;
+};
+}
+```
 
-- [ ] **Step 1–5: TDD pattern (test against real registry or use a temp key), commit**
+- Production impl: `WinRegistry` calls `RegOpenKeyExW` / `RegQueryValueExW` / `RegSetValueExW`
+- Test impl: `MapRegistry` backed by `std::map`
+- Both actions accept `IRegistry&` in their constructor
+
+Required tests:
+```cpp
+TEST_CASE("RegRead: reads value into TS variable") {
+    MapRegistry reg; reg.set(HKEY_LOCAL_MACHINE, L"SOFTWARE\\OSD", L"Version", L"1.0");
+    // ... create action, execute, verify vars["OSDVersion"] == "1.0"
+}
+TEST_CASE("RegRead: missing key leaves variable unset") {
+    MapRegistry reg;  // empty
+    // ... execute RegRead, verify vars.get("OSDVersion") == std::nullopt
+}
+TEST_CASE("RegWrite: writes TS variable value to registry") {
+    MapRegistry reg;
+    vars.set(L"OSDDeployed", L"true");
+    // ... create action, execute, verify reg.get(HKLM, key, value) == "true"
+}
+```
+
+Create: `core/include/osdui/iregistry.hpp`, `core/src/actions/action_reg_read.hpp/.cpp`, `core/src/actions/action_reg_write.hpp/.cpp`, `tests/mocks/mock_registry.hpp`, `tests/test_action_reg.cpp`
+
+- [ ] **Step 1–5: TDD pattern using MapRegistry mock, commit**
 
 ---
 
@@ -1800,11 +1900,36 @@ XML format:
 <Action Type="WMIRead" Query="SELECT Manufacturer FROM Win32_ComputerSystem" Property="Manufacturer" Variable="OSDManufacturer" />
 ```
 
-Note: Uses COM WMI (`IWbemServices`). Include `<wbemidl.h>` and link `wbemuuid.lib`. Test with a known-stable WMI class (`Win32_OperatingSystem.Caption`).
+Uses COM WMI (`IWbemServices`). To keep these testable without live WMI in CI, abstract behind `IWmi`:
 
-Create: `core/src/actions/action_wmi_read.hpp/.cpp`, `core/src/actions/action_wmi_write.hpp/.cpp`
+```cpp
+// core/include/osdui/iwmi.hpp
+namespace osdui {
+struct IWmi {
+    virtual ~IWmi() = default;
+    virtual std::optional<std::wstring> query(std::wstring_view wql,
+                                               std::wstring_view property) const = 0;
+    virtual void set(std::wstring_view wql, std::wstring_view property,
+                     std::wstring_view value) = 0;
+};
+}
+```
 
-- [ ] **Step 1–5: TDD pattern, commit**
+- Production impl: `WbemWmi` uses `IWbemServices` via COM (`wbemuuid.lib`)
+- Test impl: `MapWmi` backed by `std::map<std::wstring, std::wstring>` keyed on `query+property`
+
+Required tests:
+```cpp
+TEST_CASE("WMIRead: sets TS variable from query result") {
+    MapWmi wmi; wmi.set_result(L"SELECT Manufacturer...", L"Manufacturer", L"HP");
+    // execute, verify vars["OSDManufacturer"] == "HP"
+}
+TEST_CASE("WMIRead: missing result leaves variable unset") { /* empty MapWmi */ }
+```
+
+Create: `core/include/osdui/iwmi.hpp`, `core/src/actions/action_wmi_read.hpp/.cpp`, `core/src/actions/action_wmi_write.hpp/.cpp`, `tests/mocks/mock_wmi.hpp`, `tests/test_action_wmi.cpp`
+
+- [ ] **Step 1–5: TDD pattern using MapWmi mock, commit**
 
 ---
 
@@ -1815,11 +1940,67 @@ XML format:
 <Action Type="FileRead" Path="C:\OSD\config.txt" Variable="OSDConfig" />
 ```
 
-Key behavior: reads entire file contents (UTF-8 or UTF-16) into the TS variable.
+Key behavior:
+- Reads entire file contents (UTF-8) into the TS variable
+- File not found or empty path → variable left unset, action returns `Continue`, warning logged
+- File read errors (access denied, etc.) → variable left unset, action returns `Continue`, warning logged
 
 Create: `core/src/actions/action_file_read.hpp/.cpp`, `tests/test_action_file_read.cpp`
 
-- [ ] **Step 1–5: TDD pattern (write a temp file in the test), commit**
+Required tests (write before implementing):
+```cpp
+#include <fstream>
+#include <filesystem>
+
+TEST_CASE("FileRead: reads file contents into variable") {
+    // Write a temp file
+    auto tmp = std::filesystem::temp_directory_path() / L"osdui_test_file_read.txt";
+    { std::ofstream f{tmp}; f << "hello"; }
+
+    MapVariableStore vars; ScriptedDialogPresenter dlg;
+    CapturingScriptHost sh; LiteralConditionEvaluator ce;
+    auto ctx = make_ctx(vars, dlg, sh, ce);
+
+    actions::FileReadAction action;
+    action.set_path(tmp.wstring());
+    action.set_variable(L"OSDConfig");
+    auto result = action.execute(ctx);
+
+    REQUIRE(result.outcome == ActionOutcome::Continue);
+    REQUIRE(vars.get(L"OSDConfig") == L"hello");
+    std::filesystem::remove(tmp);
+}
+
+TEST_CASE("FileRead: missing file leaves variable unset and returns Continue") {
+    MapVariableStore vars; ScriptedDialogPresenter dlg;
+    CapturingScriptHost sh; LiteralConditionEvaluator ce;
+    auto ctx = make_ctx(vars, dlg, sh, ce);
+
+    actions::FileReadAction action;
+    action.set_path(L"C:\\definitely_does_not_exist_osdui.txt");
+    action.set_variable(L"OSDConfig");
+    auto result = action.execute(ctx);
+
+    REQUIRE(result.outcome == ActionOutcome::Continue);
+    REQUIRE_FALSE(vars.get(L"OSDConfig").has_value());
+}
+
+TEST_CASE("FileRead: empty path leaves variable unset and returns Continue") {
+    MapVariableStore vars; ScriptedDialogPresenter dlg;
+    CapturingScriptHost sh; LiteralConditionEvaluator ce;
+    auto ctx = make_ctx(vars, dlg, sh, ce);
+
+    actions::FileReadAction action;
+    action.set_path(L"");
+    action.set_variable(L"OSDConfig");
+    auto result = action.execute(ctx);
+
+    REQUIRE(result.outcome == ActionOutcome::Continue);
+    REQUIRE_FALSE(vars.get(L"OSDConfig").has_value());
+}
+```
+
+- [ ] **Step 1–5: TDD pattern, commit**
 
 ---
 
@@ -1829,13 +2010,46 @@ Each follows the same TDD pattern. Create one `.hpp/.cpp` per action type, regis
 
 These actions are lower complexity (mostly read/write vars or delegate to IDialogPresenter). Key behaviors:
 
-- **SoftwareDiscovery**: reads installed software from `HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall` into TS vars
-- **Match**: compares a TS var value against a list of patterns, sets an output variable
+- **SoftwareDiscovery**: reads installed software from `HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall` into TS vars (uses `IRegistry`)
+- **Match**: compares a TS var value against a list of patterns, sets an output variable. If no pattern matches, output variable is left unset (not set to empty).
 - **TSVar**: passes a variable list spec to `IDialogPresenter` for display (debug)
-- **TSVarList**: list operations on TS var arrays (append, remove, count)
+- **TSVarList**: list operations on TS var arrays. Naming convention: `{Base}001`, `{Base}002`, … with `{Base}` holding the count. Example: `OSDAppList` = `"3"`, `OSDAppList001` = `"Notepad"`, `OSDAppList002` = `"7-Zip"`, `OSDAppList003` = `"Chrome"`. Operations: `Append`, `Remove`, `Count`.
 - **SaveItems**: writes selected software items to a file path
 - **ErrorInfo**: passes an error spec to `IDialogPresenter` for display
 - **Vars**: passes all current vars to `IDialogPresenter` for display
+
+Required tests for **Match**:
+```cpp
+TEST_CASE("Match: sets output var when pattern matches") {
+    vars.set(L"OSDModel", L"HP EliteBook 840");
+    action.set_input_variable(L"OSDModel");
+    action.set_output_variable(L"OSDMatchResult");
+    action.add_pattern(L"HP*", L"HP");
+    action.execute(ctx);
+    REQUIRE(vars.get(L"OSDMatchResult") == L"HP");
+}
+TEST_CASE("Match: leaves output var unset when no pattern matches") {
+    vars.set(L"OSDModel", L"Unknown Device");
+    action.set_input_variable(L"OSDModel");
+    action.set_output_variable(L"OSDMatchResult");
+    action.add_pattern(L"HP*", L"HP");
+    action.execute(ctx);
+    REQUIRE_FALSE(vars.get(L"OSDMatchResult").has_value());
+}
+```
+
+Required tests for **TSVarList append**:
+```cpp
+TEST_CASE("TSVarList: append increments count and writes numbered entry") {
+    // Start with empty list
+    action.set_base(L"OSDAppList");
+    action.set_operation(L"Append");
+    action.set_value(L"Notepad");
+    action.execute(ctx);
+    REQUIRE(vars.get(L"OSDAppList") == L"1");
+    REQUIRE(vars.get(L"OSDAppList001") == L"Notepad");
+}
+```
 
 - [ ] **Step 1–5 per action: TDD, register, commit each separately**
 
@@ -1848,12 +2062,15 @@ Implements actions that require `IDialogPresenter` (core side only — no Win32 
 ### Task 20: HTTP client
 
 **Files:**
+- Create: `core/include/osdui/ihttp_client.hpp`  ← interface (so REST action is mockable in tests)
 - Create: `core/src/http/http_client.hpp`
 - Create: `core/src/http/http_client.cpp`
+- Create: `tests/mocks/mock_http_client.hpp`
 
-- [ ] **Step 1: Write http_client.hpp**
+- [ ] **Step 0: Write ihttp_client.hpp (interface)**
 
 ```cpp
+// core/include/osdui/ihttp_client.hpp
 #pragma once
 #include <string>
 #include <map>
@@ -1871,7 +2088,65 @@ struct HttpError : std::runtime_error {
     using std::runtime_error::runtime_error;
 };
 
-class HttpClient {
+struct IHttpClient {
+    virtual ~IHttpClient() = default;
+    virtual HttpResponse get (const std::string& url,
+                              const std::map<std::string, std::string>& headers = {}) = 0;
+    virtual HttpResponse post(const std::string& url,
+                              const std::string& body,
+                              const std::map<std::string, std::string>& headers = {}) = 0;
+};
+
+} // namespace osdui::http
+```
+
+- [ ] **Step 0b: Write mock_http_client.hpp**
+
+```cpp
+// tests/mocks/mock_http_client.hpp
+#pragma once
+#include <osdui/ihttp_client.hpp>
+#include <queue>
+#include <stdexcept>
+
+namespace osdui::test {
+
+class MockHttpClient : public http::IHttpClient {
+public:
+    void enqueue(http::HttpResponse resp) { responses_.push(std::move(resp)); }
+
+    http::HttpResponse get(const std::string&,
+                           const std::map<std::string,std::string>&) override {
+        return dequeue();
+    }
+    http::HttpResponse post(const std::string&, const std::string&,
+                            const std::map<std::string,std::string>&) override {
+        return dequeue();
+    }
+
+private:
+    std::queue<http::HttpResponse> responses_;
+    http::HttpResponse dequeue() {
+        if (responses_.empty())
+            throw std::logic_error{"MockHttpClient: no response queued"};
+        auto r = responses_.front(); responses_.pop(); return r;
+    }
+};
+
+} // namespace osdui::test
+```
+
+- [ ] **Step 1: Write http_client.hpp**
+
+`HttpClient` now inherits `IHttpClient`:
+
+```cpp
+#pragma once
+#include <osdui/ihttp_client.hpp>
+
+namespace osdui::http {
+
+class HttpClient : public IHttpClient {
 public:
     HttpClient();
     ~HttpClient();
@@ -1989,14 +2264,58 @@ git commit -m "feat: add curl-based HTTP client"
 XML format:
 ```xml
 <Action Type="Rest" Url="https://api.example.com/osd" Method="GET"
-        Variable="OSDResult" JsonPath="$.data.value" />
+        Variable="OSDResult" JsonPath="/data/value" />
 ```
 
-Key behavior: calls `HttpClient`, parses JSON response with nlohmann-json, extracts `JsonPath` value into TS variable.
+Key behavior:
+- Calls `IHttpClient` (injected — allows mocking in tests)
+- Parses JSON response body with nlohmann-json
+- `JsonPath` uses **nlohmann-json JSON Pointer syntax** (`/data/value` extracts `{"data": {"value": "X"}}`), NOT JSONPath `$.data.value`
+- On success (2xx): writes extracted JSON string value to `Variable`
+- On HTTP error (non-2xx): writes the status code as a string to `Variable` (e.g., `L"404"`). Downstream `Switch` can branch on this.
+- On network error (`HttpError` thrown): writes `L"0"` to `Variable` and logs the error
+- On JSON parse or pointer error: writes `L"PARSE_ERROR"` to `Variable` and logs
+
+Required tests (write before implementing):
+```cpp
+TEST_CASE("REST: GET extracts JSON pointer value into variable") {
+    MockHttpClient http;
+    http.enqueue({200, R"({"data": {"value": "DESKTOP-01"}})"});
+
+    actions::RestAction action{http};  // inject mock
+    action.set_url("https://api.example.com/osd");
+    action.set_method(L"GET");
+    action.set_variable(L"OSDResult");
+    action.set_json_path(L"/data/value");
+    action.execute(ctx);
+
+    REQUIRE(vars.get(L"OSDResult") == L"DESKTOP-01");
+}
+
+TEST_CASE("REST: non-2xx writes status code to variable") {
+    MockHttpClient http;
+    http.enqueue({404, "Not Found"});
+
+    actions::RestAction action{http};
+    action.set_url("https://api.example.com/osd");
+    action.set_variable(L"OSDResult");
+    action.execute(ctx);
+
+    REQUIRE(vars.get(L"OSDResult") == L"404");
+}
+
+TEST_CASE("REST: network error writes '0' to variable") {
+    // MockHttpClient that throws HttpError
+    // ...
+    REQUIRE(vars.get(L"OSDResult") == L"0");
+}
+```
 
 Create: `core/src/actions/action_rest.hpp/.cpp`
 
-- [ ] **Step 1–5: TDD pattern (mock HTTP with a fixture file), register, commit**
+Note: `RestAction` constructor takes `IHttpClient&`. In production (`main.cpp`), pass a `HttpClient` instance. In tests, pass `MockHttpClient`.
+
+- [ ] **Step 1–5: TDD pattern, register in config_parser, commit**
 
 ---
 
@@ -2016,11 +2335,61 @@ These actions build a `model::DialogSpec` and call `IDialogPresenter::present()`
 
 Key behavior: build `DialogSpec` from XML, call `presenter.present()`, write returned `values` into TS vars.
 
+Required tests for **UserInput**:
+```cpp
+TEST_CASE("UserInput: accepted dialog writes values to vars") {
+    ScriptedDialogPresenter dlg;
+    dlg.enqueue(model::DialogResult{true, {{L"OSDComputerName", L"DESKTOP-01"}}});
+    // ... execute, verify vars["OSDComputerName"] == "DESKTOP-01"
+    REQUIRE(result.outcome == ActionOutcome::Continue);
+}
+
+TEST_CASE("UserInput: cancelled dialog returns Abort without writing vars") {
+    ScriptedDialogPresenter dlg;
+    dlg.enqueue(model::DialogResult{false, {}});  // cancelled
+    // ... execute
+    REQUIRE(result.outcome == ActionOutcome::Abort);
+    REQUIRE_FALSE(vars.get(L"OSDComputerName").has_value());  // nothing written
+}
+```
+
+Required tests for **Preflight**:
+```cpp
+// XML: <Action Type="Preflight" ContinueOnFail="false">
+//        <Check Name="Memory" Condition="MemGB >= 4" FailureText="Need 4GB RAM" />
+//      </Action>
+
+TEST_CASE("Preflight: all checks pass returns Continue") { /* ... */ }
+
+TEST_CASE("Preflight: failed check with ContinueOnFail=false returns Abort") {
+    // condition evaluator returns false for the check condition
+    LiteralConditionEvaluator ce{{L"MemGBge4", false}};
+    // ... ContinueOnFail=false (default)
+    REQUIRE(result.outcome == ActionOutcome::Abort);
+}
+
+TEST_CASE("Preflight: failed check with ContinueOnFail=true returns Continue") {
+    LiteralConditionEvaluator ce{{L"MemGBge4", false}};
+    // ... ContinueOnFail=true
+    REQUIRE(result.outcome == ActionOutcome::Continue);
+}
+```
+
+XML for Preflight:
+```xml
+<Action Type="Preflight" ContinueOnFail="false">
+  <Check Name="Memory" Condition="MemGBge4" FailureText="Insufficient memory (need 4 GB)" />
+  <Check Name="Disk"   Condition="DiskGBge50" FailureText="Insufficient disk (need 50 GB)" WarnCondition="DiskGBge80" WarnText="Low disk space" />
+</Action>
+```
+
+`ContinueOnFail` defaults to `false`. When `false` and any check fails: show failure dialog, return `Abort`. When `true`: show warning dialog, return `Continue`.
+
 Follow TDD pattern for each. Create files, register in `config_parser.cpp`, add to `core/CMakeLists.txt`, commit each.
 
-- [ ] **Task 22a: UserInput action — TDD, register, commit**
+- [ ] **Task 22a: UserInput action — TDD (including cancel test), register, commit**
 - [ ] **Task 22b: UserInfo / InfoFullScreen actions — TDD, register, commit**
-- [ ] **Task 22c: Preflight action — TDD, register, commit**
+- [ ] **Task 22c: Preflight action — TDD (including ContinueOnFail tests), register, commit**
 - [ ] **Task 22d: AppTree action — TDD, register, commit**
 
 ---
@@ -2086,6 +2455,8 @@ Reference `UI++/ScriptHost.cpp` for the original WSH COM pattern.
 ### Task 25: Win32 DialogPresenter
 
 **Files:**
+- Create: `app/resources/osdui.rc`             ← Win32 resource file (dialog templates)
+- Create: `app/resources/resource.h`           ← resource ID constants
 - Create: `app/dialogs/dialog_presenter.hpp/.cpp`
 - Create: `app/dialogs/dialog_user_input.hpp/.cpp`
 - Create: `app/dialogs/dialog_user_info.hpp/.cpp`
@@ -2094,17 +2465,55 @@ Reference `UI++/ScriptHost.cpp` for the original WSH COM pattern.
 - Create: `app/dialogs/dialog_ts_var.hpp/.cpp`
 - Create: `app/dialogs/dialog_vars.hpp/.cpp`
 - Create: `app/dialogs/dialog_error_info.hpp/.cpp`
+- Create: `app/dialogs/dialog_save_items.hpp/.cpp`
+- Modify: `app/CMakeLists.txt`
 
-`DialogPresenter` dispatches to the correct Win32 dialog based on `DialogSpec` type. Each dialog is a Win32 `DialogBox` call. Reference the originals in `UI++/Dialogs/` for the dialog resource IDs, control layout, and message handling patterns.
+**`app/resources/osdui.rc`** lists one `DIALOG` template per action type. Reference the original dialog templates in `UI++/Resource.rc` for control layout and IDs.
+
+**`app/resources/resource.h`** defines `IDD_*` constants (dialog IDs), `IDC_*` (control IDs).
+
+**`app/CMakeLists.txt`** final state (after all dialog files are created):
+```cmake
+add_executable(osdui WIN32
+  main.cpp
+  resources/osdui.rc
+  platform/ts_variables.cpp
+  platform/wsh_script_host.cpp
+  dialogs/dialog_presenter.cpp
+  dialogs/dialog_user_input.cpp
+  dialogs/dialog_user_info.cpp
+  dialogs/dialog_preflight.cpp
+  dialogs/dialog_app_tree.cpp
+  dialogs/dialog_ts_var.cpp
+  dialogs/dialog_vars.cpp
+  dialogs/dialog_error_info.cpp
+  dialogs/dialog_save_items.cpp
+)
+
+target_include_directories(osdui PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/resources
+)
+
+target_link_libraries(osdui PRIVATE
+  osdui-core
+  Microsoft::WIL
+  ole32.lib
+  oleaut32.lib
+  wbemuuid.lib
+)
+```
+
+`DialogPresenter` dispatches to the correct Win32 dialog based on `DialogSpec::type`. Each dialog is a Win32 `DialogBox` call. Reference the originals in `UI++/Dialogs/` for dialog resource IDs, control layout, and message handling patterns.
 
 Pattern per dialog:
-1. Create `.rc` resource entry for the dialog template
+1. Add `DIALOG` template to `osdui.rc`, add `IDD_*` to `resource.h`
 2. Implement `DialogBoxW` with a `DLGPROC` message handler
 3. On `WM_INITDIALOG`: populate controls from `DialogSpec`
 4. On `IDOK`: harvest control values into `DialogResult::values`
 5. On `IDCANCEL`: return `DialogResult{false, {}}`
 
-- [ ] **Step 1–N: Implement each dialog, add to app/CMakeLists.txt, build, commit after each dialog**
+- [ ] **Step 1–N: Implement each dialog, update app/CMakeLists.txt, build, commit after each dialog**
 
 ---
 
@@ -2127,18 +2536,32 @@ Pattern per dialog:
 #include "platform/wsh_script_host.hpp"
 #include "dialogs/dialog_presenter.hpp"
 
+// Helper: convert narrow string to wide using CP_ACP (error messages are ASCII)
+static std::wstring widen(const char* s) {
+    if (!s || *s == '\0') return {};
+    int len = MultiByteToWideChar(CP_ACP, 0, s, -1, nullptr, 0);
+    std::wstring result(static_cast<std::size_t>(len) - 1, L'\0');
+    MultiByteToWideChar(CP_ACP, 0, s, -1, result.data(), len);
+    return result;
+}
+
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR lpCmdLine, int)
 {
     // Parse command line: /config:<path> /log:<path>
+    // Handles quoted paths: /config:"C:\path with spaces\UI++.xml"
     std::wstring config_path = L"UI++.xml";
     std::wstring log_path    = L"osdui.log";
 
-    // Simple arg parsing (extend as needed)
     std::wstring cmdline{lpCmdLine};
     auto get_arg = [&](std::wstring_view prefix) -> std::optional<std::wstring> {
         auto pos = cmdline.find(prefix);
         if (pos == std::wstring::npos) return std::nullopt;
         pos += prefix.size();
+        if (pos < cmdline.size() && cmdline[pos] == L'"') {
+            ++pos;  // skip opening quote
+            auto end = cmdline.find(L'"', pos);
+            return cmdline.substr(pos, end == std::wstring::npos ? end : end - pos);
+        }
         auto end = cmdline.find(L' ', pos);
         return cmdline.substr(pos, end == std::wstring::npos ? end : end - pos);
     };
@@ -2152,23 +2575,25 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR lpCmdLine, int)
         osdui::config::ConfigParser parser;
         auto graph = parser.parse(config_path);
 
-        osdui::platform::TsVariables     vars;
-        osdui::platform::WshScriptHost   scripts;
-        osdui::dialogs::DialogPresenter  dialogs{hInstance};
+        osdui::platform::TsVariables      vars;
+        osdui::platform::WshScriptHost    scripts;
+        osdui::dialogs::DialogPresenter   dialogs{hInstance};
         osdui::script::ConditionEvaluator conditions;
+        osdui::http::HttpClient           http_client;
 
         osdui::actions::ActionRunner runner;
-        auto result = runner.run(graph, vars, dialogs, scripts, conditions);
+        // Pass &log so the runner can write log entries for JumpTo errors, etc.
+        auto result = runner.run(graph, vars, dialogs, scripts, conditions, &log);
 
         log.info(L"osdUI", result == osdui::actions::RunResult::Success
                             ? L"Completed successfully" : L"Aborted");
         return result == osdui::actions::RunResult::Success ? 0 : 1;
 
     } catch (const osdui::config::ParseError& e) {
-        log.error(L"osdUI", std::wstring{e.what(), e.what() + strlen(e.what())});
+        log.error(L"osdUI", widen(e.what()));
         return 1;
     } catch (const std::exception& e) {
-        log.error(L"osdUI", std::wstring{e.what(), e.what() + strlen(e.what())});
+        log.error(L"osdUI", widen(e.what()));
         return 1;
     }
 }
