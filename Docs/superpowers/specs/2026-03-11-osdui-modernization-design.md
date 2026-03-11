@@ -190,7 +190,6 @@ All action types from the original except `AD` (LDAP), AWS, and `UserAuth`.
 | `SoftwareDiscovery` | Read installed software from registry |
 | `SaveItems` | Export selected items to a file |
 | `Match` | Pattern match input against rules |
-| `TPM` | TPM chip status checks |
 | `ErrorInfo` | Error information dialog |
 | `Vars` | Variable viewer dialog |
 | REST | HTTP REST call; response into TS var (was commented out in original — reimplemented) |
@@ -200,6 +199,7 @@ All action types from the original except `AD` (LDAP), AWS, and `UserAuth`.
 | XML type | Reason |
 |---|---|
 | `AD` | LDAP / Active Directory — not used |
+| `TPM` | TPM chip status checks — not used |
 | `UserAuth` | User authentication dialog — not used |
 | AWS extension | Not used |
 
