@@ -21,14 +21,17 @@ ActionResult PreflightAction::execute(ActionContext& ctx) {
         }
     }
 
-    // Build a dialog spec to show results
-    model::DialogSpec spec;
-    spec.title = L"Preflight Checks";
+    // Build a dialog spec to show results.
+    // TODO(chunk7): PreflightItem status (Pass/Warn/Fail) is not yet carried through
+    // to DialogSpec because InputSpec has no status field. The Win32 DialogPresenter
+    // in app/platform/win32_dialog_presenter.cpp will need a preflight-specific
+    // overload or InputType::Preflight variant. See Task 25.
+    model::DialogSpec spec{ .title = L"Preflight Checks" };
     for (const auto& check : evaluated) {
-        model::InputSpec item;
-        item.type  = model::InputType::Info;
-        item.label = check.name;
-        spec.inputs.push_back(std::move(item));
+        spec.inputs.push_back(model::InputSpec{
+            .label = check.name,
+            .type  = model::InputType::Info,
+        });
     }
     ctx.dialogs.present(spec, ctx.vars);
 
