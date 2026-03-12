@@ -2,6 +2,7 @@ find_package(Catch2 3 CONFIG REQUIRED)
 
 add_executable(osdui-tests
   test_stub.cpp   # replaced by real tests in Chunk 2+
+  test_interfaces_compile.cpp
 )
 
 target_link_libraries(osdui-tests
