@@ -13,6 +13,7 @@
 #include "../actions/action_error_info.hpp"
 #include "../actions/action_vars.hpp"
 #include "../actions/action_user_input.hpp"
+#include "../actions/action_user_info.hpp"
 
 namespace osdui::config {
 namespace {
@@ -132,6 +133,19 @@ std::unique_ptr<IAction> make_action(std::wstring_view type, const pugi::xml_nod
             }
             action->add_input(std::move(spec));
         }
+        return action;
+    }
+
+    if (type == L"Info") {
+        auto action = std::make_unique<actions::UserInfoAction>();
+        action->set_title(node.attribute(L"Title").as_string());
+        action->set_message(node.attribute(L"Message").as_string());
+        return action;
+    }
+    if (type == L"InfoFullScreen") {
+        auto action = std::make_unique<actions::InfoFullScreenAction>();
+        action->set_title(node.attribute(L"Title").as_string());
+        action->set_message(node.attribute(L"Message").as_string());
         return action;
     }
 
