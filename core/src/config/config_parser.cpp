@@ -5,6 +5,7 @@
 #include "../actions/action_default_values.hpp"
 #include "../actions/action_external_call.hpp"
 #include "../actions/action_switch.hpp"
+#include "../actions/action_random_string.hpp"
 
 namespace osdui::config {
 namespace {
@@ -42,6 +43,17 @@ std::unique_ptr<IAction> make_action(std::wstring_view type, const pugi::xml_nod
                              c.attribute(L"GoTo").as_string());
         if (auto def = node.child(L"Default"); def)
             action->set_default(def.attribute(L"GoTo").as_string());
+        return action;
+    }
+
+    // Handle RandomString with full implementation
+    if (type == L"RandomString") {
+        auto action = std::make_unique<actions::RandomStringAction>();
+        action->set_variable(node.attribute(L"Variable").as_string());
+        if (auto l = node.attribute(L"Length"); l)
+            action->set_length(l.as_int(8));
+        if (auto cs = node.attribute(L"CharSet"); cs)
+            action->set_charset(cs.as_string());
         return action;
     }
 
