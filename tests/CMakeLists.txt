@@ -8,6 +8,7 @@ add_executable(osdui-tests
   test_action_runner.cpp
   test_action_default_values.cpp
   test_action_external_call.cpp
+  test_action_switch.cpp
 )
 
 target_link_libraries(osdui-tests

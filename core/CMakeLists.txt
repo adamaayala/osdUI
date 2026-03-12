@@ -19,4 +19,5 @@ target_sources(osdui-core PRIVATE
   src/actions/action_runner.cpp
   src/actions/action_default_values.cpp
   src/actions/action_external_call.cpp
+  src/actions/action_switch.cpp
 )

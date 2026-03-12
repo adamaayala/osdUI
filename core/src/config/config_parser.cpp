@@ -4,6 +4,7 @@
 #include <vector>
 #include "../actions/action_default_values.hpp"
 #include "../actions/action_external_call.hpp"
+#include "../actions/action_switch.hpp"
 
 namespace osdui::config {
 namespace {
@@ -29,6 +30,18 @@ std::unique_ptr<IAction> make_action(std::wstring_view type, const pugi::xml_nod
             action->set_variable(v.as_string());
         if (auto e = node.attribute(L"SuccessExitCode"); e)
             action->set_success_exit_code(e.as_int());
+        return action;
+    }
+
+    // Handle Switch with full implementation
+    if (type == L"Switch") {
+        auto action = std::make_unique<actions::SwitchAction>();
+        action->set_variable(node.attribute(L"Variable").as_string());
+        for (const auto& c : node.children(L"Case"))
+            action->add_case(c.attribute(L"Value").as_string(),
+                             c.attribute(L"GoTo").as_string());
+        if (auto def = node.child(L"Default"); def)
+            action->set_default(def.attribute(L"GoTo").as_string());
         return action;
     }
 
