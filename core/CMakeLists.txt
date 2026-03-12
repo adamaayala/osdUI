@@ -23,4 +23,6 @@ target_sources(osdui-core PRIVATE
   src/actions/action_random_string.cpp
   src/actions/action_reg_read.cpp
   src/actions/action_reg_write.cpp
+  src/actions/action_wmi_read.cpp
+  src/actions/action_wmi_write.cpp
 )

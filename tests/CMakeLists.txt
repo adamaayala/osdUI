@@ -11,6 +11,7 @@ add_executable(osdui-tests
   test_action_switch.cpp
   test_action_random_string.cpp
   test_action_reg.cpp
+  test_action_wmi.cpp
 )
 
 target_link_libraries(osdui-tests
