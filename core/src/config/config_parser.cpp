@@ -18,6 +18,9 @@ namespace {
 
 // Stub: return a non-null placeholder for known types so tests pass.
 // Real factories replace individual branches in Chunk 5+.
+// NOTE: RestAction requires IHttpClient injection and cannot be instantiated
+// here without access to a client instance. "Rest" maps to PlaceholderAction
+// for now; wiring happens in main.cpp (Chunk 7).
 std::unique_ptr<IAction> make_action(std::wstring_view type, const pugi::xml_node& node) {
     // Handle DefaultValues first with full implementation
     if (type == L"DefaultValues") {
