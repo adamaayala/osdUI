@@ -6,6 +6,7 @@ add_executable(osdui-tests
   test_config_parser.cpp
   test_condition_evaluator.cpp
   test_action_runner.cpp
+  test_action_default_values.cpp
 )
 
 target_link_libraries(osdui-tests

@@ -17,4 +17,5 @@ target_sources(osdui-core PRIVATE
   src/config/config_parser.cpp
   src/script/condition_evaluator.cpp
   src/actions/action_runner.cpp
+  src/actions/action_default_values.cpp
 )

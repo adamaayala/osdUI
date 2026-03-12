@@ -2,13 +2,24 @@
 #include <pugixml.hpp>
 #include <format>
 #include <vector>
+#include "../actions/action_default_values.hpp"
 
 namespace osdui::config {
 namespace {
 
 // Stub: return a non-null placeholder for known types so tests pass.
 // Real factories replace individual branches in Chunk 5+.
-std::unique_ptr<IAction> make_action(std::wstring_view type, const pugi::xml_node& /*node*/) {
+std::unique_ptr<IAction> make_action(std::wstring_view type, const pugi::xml_node& node) {
+    // Handle DefaultValues first with full implementation
+    if (type == L"DefaultValues") {
+        auto action = std::make_unique<actions::DefaultValuesAction>();
+        for (const auto& var : node.children(L"Variable")) {
+            action->add(var.attribute(L"Name").as_string(),
+                        var.attribute(L"Value").as_string());
+        }
+        return action;
+    }
+
     static const std::vector<std::wstring> known_types = {
         L"DefaultValues", L"Input", L"Info", L"InfoFullScreen",
         L"AppTree", L"ExternalCall", L"Preflight", L"RegRead", L"RegWrite",
