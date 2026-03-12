@@ -15,6 +15,7 @@ add_executable(osdui-tests
   test_action_file_read.cpp
   test_action_batch.cpp
   test_action_rest.cpp
+  test_action_user_input.cpp
 )
 
 target_link_libraries(osdui-tests

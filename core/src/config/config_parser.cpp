@@ -12,6 +12,7 @@
 #include "../actions/action_ts_var_list.hpp"
 #include "../actions/action_error_info.hpp"
 #include "../actions/action_vars.hpp"
+#include "../actions/action_user_input.hpp"
 
 namespace osdui::config {
 namespace {
@@ -102,6 +103,36 @@ std::unique_ptr<IAction> make_action(std::wstring_view type, const pugi::xml_nod
     }
     if (type == L"Vars") {
         return std::make_unique<actions::VarsAction>();
+    }
+
+    if (type == L"Input") {
+        auto action = std::make_unique<actions::UserInputAction>();
+        action->set_title(node.attribute(L"Title").as_string());
+        action->set_banner_title(node.attribute(L"BannerTitle").as_string());
+        action->set_banner_text(node.attribute(L"BannerText").as_string());
+        bool allow_cancel = std::wstring{node.attribute(L"AllowCancel").as_string()} == L"true";
+        action->set_allow_cancel(allow_cancel);
+        for (const auto& field : node.children(L"InputField")) {
+            model::InputSpec spec;
+            spec.variable      = field.attribute(L"Variable").as_string();
+            spec.label         = field.attribute(L"Prompt").as_string();
+            spec.default_value = field.attribute(L"Default").as_string();
+            spec.required      = std::wstring{field.attribute(L"Required").as_string()} == L"true";
+            std::wstring ft    = field.attribute(L"Type").as_string();
+            if      (ft == L"DropDownList") spec.type = model::InputType::Dropdown;
+            else if (ft == L"Password")     spec.type = model::InputType::Password;
+            else if (ft == L"CheckBox")     spec.type = model::InputType::Checkbox;
+            else if (ft == L"Info")         spec.type = model::InputType::Info;
+            else                            spec.type = model::InputType::Text;
+            for (const auto& opt : field.children(L"Option")) {
+                model::DropdownItem item;
+                item.value   = opt.attribute(L"Value").as_string();
+                item.display = opt.attribute(L"Text").as_string();
+                spec.items.push_back(std::move(item));
+            }
+            action->add_input(std::move(spec));
+        }
+        return action;
     }
 
     static const std::vector<std::wstring> known_types = {
