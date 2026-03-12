@@ -1,0 +1,101 @@
+#include "resource.h"
+#include <windows.h>
+
+// ── User Info dialog ────────────────────────────────────────────────────────
+
+IDD_USER_INFO DIALOG 0, 0, 300, 150
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+FONT 8, "MS Shell Dlg"
+BEGIN
+    LTEXT "", IDC_TITLE_LABEL, 7, 7, 286, 20
+    LTEXT "", IDC_INFO_TEXT, 7, 30, 286, 80
+    DEFPUSHBUTTON "OK", IDOK, 189, 129, 50, 14
+    PUSHBUTTON "Cancel", IDCANCEL, 243, 129, 50, 14
+END
+
+// ── User Input dialog ───────────────────────────────────────────────────────
+
+IDD_USER_INPUT DIALOG 0, 0, 320, 260
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+FONT 8, "MS Shell Dlg"
+BEGIN
+    LTEXT "", IDC_TITLE_LABEL, 7, 7, 306, 20
+    LTEXT "", IDC_INPUT_LIST, 7, 30, 306, 190
+    DEFPUSHBUTTON "OK", IDOK, 209, 239, 50, 14
+    PUSHBUTTON "Cancel", IDCANCEL, 263, 239, 50, 14
+END
+
+// ── Preflight dialog ────────────────────────────────────────────────────────
+
+IDD_PREFLIGHT DIALOG 0, 0, 320, 220
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+FONT 8, "MS Shell Dlg"
+BEGIN
+    LTEXT "", IDC_TITLE_LABEL, 7, 7, 306, 20
+    CONTROL "", IDC_PREFLIGHT_LIST, "SysListView32",
+            LVS_REPORT | WS_BORDER | WS_TABSTOP, 7, 30, 306, 150
+    DEFPUSHBUTTON "OK", IDOK, 209, 199, 50, 14
+    PUSHBUTTON "Cancel", IDCANCEL, 263, 199, 50, 14
+END
+
+// ── App Tree dialog ─────────────────────────────────────────────────────────
+
+IDD_APP_TREE DIALOG 0, 0, 320, 280
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+FONT 8, "MS Shell Dlg"
+BEGIN
+    LTEXT "", IDC_TITLE_LABEL, 7, 7, 306, 20
+    CONTROL "", IDC_APP_TREE_LIST, "SysTreeView32",
+            TVS_HASBUTTONS | TVS_HASLINES | TVS_LINESATROOT | TVS_CHECKBOXES |
+            WS_BORDER | WS_TABSTOP, 7, 30, 306, 210
+    DEFPUSHBUTTON "OK", IDOK, 209, 259, 50, 14
+    PUSHBUTTON "Cancel", IDCANCEL, 263, 259, 50, 14
+END
+
+// ── TS Variable viewer dialog ───────────────────────────────────────────────
+
+IDD_TS_VAR DIALOG 0, 0, 360, 280
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+FONT 8, "MS Shell Dlg"
+BEGIN
+    LTEXT "Task Sequence Variables", IDC_TITLE_LABEL, 7, 7, 346, 14
+    CONTROL "", IDC_TSVAR_LIST, "SysListView32",
+            LVS_REPORT | WS_BORDER | WS_TABSTOP, 7, 24, 346, 220
+    DEFPUSHBUTTON "OK", IDOK, 303, 259, 50, 14
+END
+
+// ── Vars display dialog ─────────────────────────────────────────────────────
+
+IDD_VARS DIALOG 0, 0, 360, 280
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+FONT 8, "MS Shell Dlg"
+BEGIN
+    LTEXT "Variables", IDC_TITLE_LABEL, 7, 7, 346, 14
+    CONTROL "", IDC_VARS_LIST, "SysListView32",
+            LVS_REPORT | WS_BORDER | WS_TABSTOP, 7, 24, 346, 220
+    DEFPUSHBUTTON "OK", IDOK, 303, 259, 50, 14
+END
+
+// ── Error Info dialog ───────────────────────────────────────────────────────
+
+IDD_ERROR_INFO DIALOG 0, 0, 300, 180
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+FONT 8, "MS Shell Dlg"
+BEGIN
+    LTEXT "", IDC_TITLE_LABEL, 7, 7, 286, 20
+    LTEXT "", IDC_ERROR_TEXT, 7, 30, 286, 110
+    DEFPUSHBUTTON "OK", IDOK, 243, 159, 50, 14
+END
+
+// ── Save Items dialog ───────────────────────────────────────────────────────
+
+IDD_SAVE_ITEMS DIALOG 0, 0, 320, 220
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+FONT 8, "MS Shell Dlg"
+BEGIN
+    LTEXT "", IDC_TITLE_LABEL, 7, 7, 306, 20
+    CONTROL "", IDC_SAVE_LIST, "SysListView32",
+            LVS_REPORT | WS_BORDER | WS_TABSTOP, 7, 30, 306, 150
+    DEFPUSHBUTTON "OK", IDOK, 209, 199, 50, 14
+    PUSHBUTTON "Cancel", IDCANCEL, 263, 199, 50, 14
+END
