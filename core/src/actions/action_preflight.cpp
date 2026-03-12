@@ -26,7 +26,7 @@ ActionResult PreflightAction::execute(ActionContext& ctx) {
     // to DialogSpec because InputSpec has no status field. The Win32 DialogPresenter
     // in app/platform/win32_dialog_presenter.cpp will need a preflight-specific
     // overload or InputType::Preflight variant. See Task 25.
-    model::DialogSpec spec{ .title = L"Preflight Checks" };
+    model::DialogSpec spec{ .type = model::DialogType::Preflight, .title = L"Preflight Checks" };
     for (const auto& check : evaluated) {
         spec.inputs.push_back(model::InputSpec{
             .label = check.name,

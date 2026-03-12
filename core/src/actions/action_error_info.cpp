@@ -4,6 +4,7 @@ namespace osdui::actions {
 
 ActionResult ErrorInfoAction::execute(ActionContext& ctx) {
     model::DialogSpec spec;
+    spec.type  = model::DialogType::ErrorInfo;
     spec.title = title_;
     model::InputSpec info;
     info.type  = model::InputType::Info;

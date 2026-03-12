@@ -18,7 +18,10 @@ void populate_tree(HWND tree, const model::DialogSpec& spec) {
         tvi.item.pszText = label_buf.data();
         tvi.item.lParam  = 0;
 
-        TreeView_InsertItem(tree, &tvi);
+        HTREEITEM hItem = TreeView_InsertItem(tree, &tvi);
+        if (input.default_value == L"true") {
+            TreeView_SetCheckState(tree, hItem, TRUE);
+        }
     }
 }
 

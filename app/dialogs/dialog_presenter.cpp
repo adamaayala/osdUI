@@ -15,35 +15,23 @@ DialogPresenter::DialogPresenter(HINSTANCE instance)
 
 model::DialogResult DialogPresenter::present(
     const model::DialogSpec& spec,
-    const IVariableStore& /*vars*/) {
+    const IVariableStore& /*vars  — available for variable substitution in dialog text
+        (e.g., resolving %VAR% in labels).  Currently not forwarded to dialog
+        implementations — deferred until field-level variable substitution is
+        needed.  See TODO(chunk7). */) {
 
-    // Dispatch based on the composition of input types in the spec.
-    // The action engine populates DialogSpec differently for each dialog
-    // kind; we inspect the inputs to determine which dialog to show.
-
-    if (spec.inputs.empty()) {
-        // No inputs at all — treat as informational.
-        return show_user_info(instance_, spec);
+    switch (spec.type) {
+    case model::DialogType::UserInput:     return show_user_input(instance_, spec);
+    case model::DialogType::UserInfo:      return show_user_info(instance_, spec);
+    case model::DialogType::InfoFullScreen:return show_user_info(instance_, spec);  // reuse
+    case model::DialogType::Preflight:     return show_preflight(instance_, spec);
+    case model::DialogType::AppTree:       return show_app_tree(instance_, spec);
+    case model::DialogType::TsVar:         return show_ts_var(instance_, spec);
+    case model::DialogType::Vars:          return show_vars(instance_, spec);
+    case model::DialogType::ErrorInfo:     return show_error_info(instance_, spec);
+    case model::DialogType::SaveItems:     return show_save_items(instance_, spec);
     }
-
-    // Check if all inputs share a single type that maps to a specific dialog.
-    const auto first_type = spec.inputs[0].type;
-    bool all_same_type = true;
-    for (const auto& input : spec.inputs) {
-        if (input.type != first_type) {
-            all_same_type = false;
-            break;
-        }
-    }
-
-    // Pure informational display (all Info inputs).
-    if (all_same_type && first_type == model::InputType::Info) {
-        return show_user_info(instance_, spec);
-    }
-
-    // Mixed input types or specific interactive types — use the general
-    // UserInput dialog which dynamically creates controls per input.
-    return show_user_input(instance_, spec);
+    return {};  // unreachable — all enum values handled above
 }
 
 } // namespace osdui::dialogs

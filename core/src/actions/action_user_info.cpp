@@ -4,6 +4,7 @@ namespace osdui::actions {
 
 ActionResult UserInfoAction::execute(ActionContext& ctx) {
     model::DialogSpec spec{
+        .type   = model::DialogType::UserInfo,
         .title  = title_,
         .inputs = { model::InputSpec{.label = message_, .type = model::InputType::Info} },
     };
@@ -13,6 +14,7 @@ ActionResult UserInfoAction::execute(ActionContext& ctx) {
 
 ActionResult InfoFullScreenAction::execute(ActionContext& ctx) {
     model::DialogSpec spec{
+        .type        = model::DialogType::InfoFullScreen,
         .title       = title_,
         .banner_text = message_,
     };

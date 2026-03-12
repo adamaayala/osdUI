@@ -23,6 +23,18 @@ struct DialogResult {
 
 enum class InputType { Text, Password, Dropdown, Checkbox, Info };
 
+enum class DialogType {
+    UserInput,
+    UserInfo,
+    InfoFullScreen,
+    Preflight,
+    AppTree,
+    TsVar,
+    Vars,
+    ErrorInfo,
+    SaveItems,
+};
+
 struct DropdownItem {
     std::wstring value;
     std::wstring display;
@@ -41,6 +53,7 @@ struct InputSpec {
 // ── Dialog spec (passed to IDialogPresenter) ─────────────────────────────────
 
 struct DialogSpec {
+    DialogType type{DialogType::UserInput};
     std::wstring title;
     std::wstring banner_title;
     std::wstring banner_text;
