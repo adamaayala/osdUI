@@ -37,4 +37,5 @@ target_sources(osdui-core PRIVATE
   src/http/http_client.cpp
   src/actions/action_user_input.cpp
   src/actions/action_user_info.cpp
+  src/actions/action_preflight.cpp
 )

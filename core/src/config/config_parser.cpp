@@ -14,6 +14,7 @@
 #include "../actions/action_vars.hpp"
 #include "../actions/action_user_input.hpp"
 #include "../actions/action_user_info.hpp"
+#include "../actions/action_preflight.hpp"
 
 namespace osdui::config {
 namespace {
@@ -146,6 +147,20 @@ std::unique_ptr<IAction> make_action(std::wstring_view type, const pugi::xml_nod
         auto action = std::make_unique<actions::InfoFullScreenAction>();
         action->set_title(node.attribute(L"Title").as_string());
         action->set_message(node.attribute(L"Message").as_string());
+        return action;
+    }
+
+    if (type == L"Preflight") {
+        auto action = std::make_unique<actions::PreflightAction>();
+        std::wstring cont = node.attribute(L"ContinueOnFail").as_string();
+        action->set_continue_on_fail(cont == L"true");
+        for (const auto& check_node : node.children(L"Check")) {
+            model::PreflightItem item;
+            item.name           = check_node.attribute(L"Name").as_string();
+            item.condition      = check_node.attribute(L"Condition").as_string();
+            item.warn_condition = check_node.attribute(L"WarnCondition").as_string();
+            action->add_check(std::move(item));
+        }
         return action;
     }
 
