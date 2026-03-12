@@ -1,0 +1,17 @@
+add_library(osdui-core STATIC)
+
+target_include_directories(osdui-core
+  PUBLIC  ${CMAKE_CURRENT_SOURCE_DIR}/include
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+target_link_libraries(osdui-core
+  PUBLIC  pugixml::pugixml
+  PRIVATE CURL::libcurl
+          nlohmann_json::nlohmann_json
+)
+
+# Glob sources — add each file explicitly as you create it
+target_sources(osdui-core PRIVATE
+  # populated in later tasks
+)
