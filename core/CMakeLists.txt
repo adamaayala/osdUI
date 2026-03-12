@@ -21,4 +21,6 @@ target_sources(osdui-core PRIVATE
   src/actions/action_external_call.cpp
   src/actions/action_switch.cpp
   src/actions/action_random_string.cpp
+  src/actions/action_reg_read.cpp
+  src/actions/action_reg_write.cpp
 )
