@@ -6,8 +6,6 @@
 #include <wil/resource.h>
 #include <wil/result.h>
 
-#include <string>
-
 namespace osdui::platform {
 
 // ---------------------------------------------------------------------------
@@ -96,7 +94,9 @@ static model::ScriptResult run_exe(std::wstring_view command_line) {
     wil::unique_handle process_handle{pi.hProcess};
     wil::unique_handle thread_handle{pi.hThread};
 
-    WaitForSingleObject(process_handle.get(), INFINITE);
+    // Fix 1: Check WaitForSingleObject return value.
+    const DWORD wait_result = WaitForSingleObject(process_handle.get(), INFINITE);
+    THROW_HR_IF(HRESULT_FROM_WIN32(GetLastError()), wait_result == WAIT_FAILED);
 
     DWORD exit_code = 0;
     THROW_IF_WIN32_BOOL_FALSE(
@@ -135,26 +135,40 @@ static model::ScriptResult run_script(std::wstring_view language,
 
     THROW_IF_FAILED(active_script_parse->InitNew());
 
-    // ParseScriptText with SCRIPTTEXT_ISEXPRESSION returns the result variant.
+    // Fix 3: Transition from SCRIPTSTATE_INITIALIZED to SCRIPTSTATE_STARTED
+    // so that ParseScriptText can actually execute code.
+    THROW_IF_FAILED(active_script->SetScriptState(SCRIPTSTATE_STARTED));
+
+    // Fix 2: Use flag 0 (not SCRIPTTEXT_ISEXPRESSION) so statement-block
+    // scripts (the common case for VBScript/JScript payloads) execute
+    // correctly.
+    // Fix 4: Capture EXCEPINFO to surface parse/execution error descriptions.
     std::wstring source_buf{source};
-    VARIANT result{};
-    VariantInit(&result);
-    HRESULT hr = active_script_parse->ParseScriptText(
+    EXCEPINFO ei{};
+    const HRESULT hr = active_script_parse->ParseScriptText(
         source_buf.c_str(),
         nullptr,   // item name
         nullptr,   // context
         nullptr,   // delimiter
         0,         // source context cookie
-        1,         // start line number
-        SCRIPTTEXT_ISEXPRESSION,
-        &result,
-        nullptr);
-
-    VariantClear(&result);
+        0,         // start line number
+        SCRIPTTEXT_ISPERSISTENT,
+        nullptr,
+        &ei);
 
     if (FAILED(hr)) {
-        return model::ScriptResult{static_cast<int>(hr), L""};
+        std::wstring err = (ei.bstrDescription && *ei.bstrDescription)
+                           ? std::wstring{ei.bstrDescription}
+                           : L"Script parse/execution error";
+        SysFreeString(ei.bstrSource);
+        SysFreeString(ei.bstrDescription);
+        SysFreeString(ei.bstrHelpFile);
+        return model::ScriptResult{static_cast<int>(hr), err};
     }
+
+    SysFreeString(ei.bstrSource);
+    SysFreeString(ei.bstrDescription);
+    SysFreeString(ei.bstrHelpFile);
 
     return model::ScriptResult{0, L""};
 }
