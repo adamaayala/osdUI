@@ -13,5 +13,5 @@ target_link_libraries(osdui-core
 
 # Glob sources — add each file explicitly as you create it
 target_sources(osdui-core PRIVATE
-  # populated in later tasks
+  src/logging/cm_log.cpp
 )
