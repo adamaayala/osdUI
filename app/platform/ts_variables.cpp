@@ -10,37 +10,21 @@
 
 namespace osdui::platform {
 
-namespace {
-
-// Resolve the DISPID for a named property on an IDispatch object.
-DISPID get_dispid(IDispatch* dispatch, OLECHAR* name) {
-    DISPID dispid = DISPID_UNKNOWN;
-    HRESULT hr = dispatch->GetIDsOfNames(IID_NULL, &name, 1,
-                                         LOCALE_USER_DEFAULT, &dispid);
-    THROW_IF_FAILED(hr);
-    return dispid;
-}
-
-} // namespace
-
 TsVariables::TsVariables() {
-    THROW_IF_FAILED(CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED));
+    // COM must be initialized by the caller before constructing this object.
 
     // Create the SCCM task sequence environment COM object by ProgID.
     CLSID clsid{};
     THROW_IF_FAILED(CLSIDFromProgID(L"Microsoft.SMS.TSEnvironment", &clsid));
 
     wil::com_ptr<IDispatch> dispatch;
-    THROW_IF_FAILED(CoCreateInstance(clsid, nullptr, CLSCTX_ALL,
+    THROW_IF_FAILED(CoCreateInstance(clsid, nullptr, CLSCTX_INPROC_SERVER,
                                      IID_IDispatch,
                                      reinterpret_cast<void**>(&dispatch)));
     ts_env_ = std::move(dispatch);
 }
 
-TsVariables::~TsVariables() {
-    ts_env_.reset();
-    CoUninitialize();
-}
+TsVariables::~TsVariables() = default;
 
 std::optional<std::wstring> TsVariables::get(std::wstring_view name) const {
     // Build a mutable copy of the name as OLECHAR for GetIDsOfNames.

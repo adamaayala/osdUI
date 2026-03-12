@@ -6,9 +6,11 @@ namespace osdui::platform {
 
 // IVariableStore backed by the SCCM task sequence COM environment.
 // Throws wil::ResultException if COM calls fail.
+// COM must be initialized by the caller (e.g. via CoInitializeEx) before
+// constructing this object.
 class TsVariables : public IVariableStore {
 public:
-    TsVariables();   // CoInitializes and binds ITSEnvClass
+    TsVariables();   // Binds to Microsoft.SMS.TSEnvironment via COM
     ~TsVariables();
 
     std::optional<std::wstring> get(std::wstring_view name) const override;
