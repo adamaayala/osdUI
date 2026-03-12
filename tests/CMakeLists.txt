@@ -3,6 +3,7 @@ find_package(Catch2 3 CONFIG REQUIRED)
 add_executable(osdui-tests
   test_stub.cpp   # replaced by real tests in Chunk 2+
   test_interfaces_compile.cpp
+  test_config_parser.cpp
 )
 
 target_link_libraries(osdui-tests
@@ -11,6 +12,10 @@ target_link_libraries(osdui-tests
 )
 
 target_include_directories(osdui-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+target_compile_definitions(osdui-tests PRIVATE
+  FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures"
+)
 
 include(CTest)
 list(APPEND CMAKE_MODULE_PATH "${Catch2_DIR}/../../../share/catch2")

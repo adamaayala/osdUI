@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UIpp>
+  <Actions>
+    <Action Type="DefaultValues">
+      <Variable Name="OSDComputerName" Value="DESKTOP" />
+    </Action>
+    <Action Type="Input" Title="Computer Name">
+      <InputField Type="TextInput" Variable="OSDComputerName" Prompt="Computer Name" />
+    </Action>
+  </Actions>
+</UIpp>
