@@ -3,6 +3,7 @@
 #include <format>
 #include <vector>
 #include "../actions/action_default_values.hpp"
+#include "../actions/action_external_call.hpp"
 
 namespace osdui::config {
 namespace {
@@ -17,6 +18,17 @@ std::unique_ptr<IAction> make_action(std::wstring_view type, const pugi::xml_nod
             action->add(var.attribute(L"Name").as_string(),
                         var.attribute(L"Value").as_string());
         }
+        return action;
+    }
+
+    // Handle ExternalCall with full implementation
+    if (type == L"ExternalCall") {
+        auto action = std::make_unique<actions::ExternalCallAction>();
+        action->set_run(node.attribute(L"Run").as_string());
+        if (auto v = node.attribute(L"Variable"); v)
+            action->set_variable(v.as_string());
+        if (auto e = node.attribute(L"SuccessExitCode"); e)
+            action->set_success_exit_code(e.as_int());
         return action;
     }
 
