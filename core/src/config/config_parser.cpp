@@ -15,6 +15,7 @@
 #include "../actions/action_user_input.hpp"
 #include "../actions/action_user_info.hpp"
 #include "../actions/action_preflight.hpp"
+#include "../actions/action_app_tree.hpp"
 
 namespace osdui::config {
 namespace {
@@ -160,6 +161,20 @@ std::unique_ptr<IAction> make_action(std::wstring_view type, const pugi::xml_nod
             item.condition      = check_node.attribute(L"Condition").as_string();
             item.warn_condition = check_node.attribute(L"WarnCondition").as_string();
             action->add_check(std::move(item));
+        }
+        return action;
+    }
+
+    if (type == L"AppTree") {
+        auto action = std::make_unique<actions::AppTreeAction>();
+        action->set_title(node.attribute(L"Title").as_string());
+        for (const auto& sw : node.children(L"Software")) {
+            model::SoftwareItem item;
+            item.id       = sw.attribute(L"id").as_string();
+            item.name     = sw.attribute(L"Name").as_string();
+            item.category = sw.attribute(L"Category").as_string();
+            item.required = std::wstring{sw.attribute(L"Required").as_string()} == L"true";
+            action->add_software(std::move(item));
         }
         return action;
     }
