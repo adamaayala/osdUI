@@ -27,6 +27,7 @@ TEST_CASE("UserInfo: calls present and returns Continue") {
     auto result = action.execute(ctx);
 
     REQUIRE(result.outcome == ActionOutcome::Continue);
+    REQUIRE(dlg.calls_made() == 1);
 }
 
 TEST_CASE("InfoFullScreen: calls present and returns Continue") {
@@ -43,4 +44,5 @@ TEST_CASE("InfoFullScreen: calls present and returns Continue") {
     auto result = action.execute(ctx);
 
     REQUIRE(result.outcome == ActionOutcome::Continue);
+    REQUIRE(dlg.calls_made() == 1);
 }

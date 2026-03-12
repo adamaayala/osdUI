@@ -16,10 +16,14 @@ public:
         if (queue_.empty()) throw std::logic_error{"ScriptedDialogPresenter: no more results"};
         auto r = std::move(queue_.front());
         queue_.pop();
+        ++calls_made_;
         return r;
     }
+    // Number of times present() has been called successfully.
+    int calls_made() const { return calls_made_; }
 private:
     std::queue<model::DialogResult> queue_;
+    int calls_made_{0};
 };
 
 } // namespace osdui::test
