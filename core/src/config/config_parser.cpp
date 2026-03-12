@@ -6,6 +6,7 @@
 #include "../actions/action_external_call.hpp"
 #include "../actions/action_switch.hpp"
 #include "../actions/action_random_string.hpp"
+#include "../actions/action_file_read.hpp"
 
 namespace osdui::config {
 namespace {
@@ -54,6 +55,15 @@ std::unique_ptr<IAction> make_action(std::wstring_view type, const pugi::xml_nod
             action->set_length(l.as_int(8));
         if (auto cs = node.attribute(L"CharSet"); cs)
             action->set_charset(cs.as_string());
+        return action;
+    }
+
+    // Handle FileRead with full implementation
+    if (type == L"FileRead") {
+        auto action = std::make_unique<actions::FileReadAction>();
+        action->set_path(node.attribute(L"Path").as_string());
+        if (auto v = node.attribute(L"Variable"); v)
+            action->set_variable(v.as_string());
         return action;
     }
 
