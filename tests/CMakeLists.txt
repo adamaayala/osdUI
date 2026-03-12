@@ -13,6 +13,7 @@ add_executable(osdui-tests
   test_action_reg.cpp
   test_action_wmi.cpp
   test_action_file_read.cpp
+  test_action_batch.cpp
 )
 
 target_link_libraries(osdui-tests

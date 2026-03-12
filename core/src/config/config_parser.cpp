@@ -7,6 +7,11 @@
 #include "../actions/action_switch.hpp"
 #include "../actions/action_random_string.hpp"
 #include "../actions/action_file_read.hpp"
+#include "../actions/action_match.hpp"
+#include "../actions/action_ts_var.hpp"
+#include "../actions/action_ts_var_list.hpp"
+#include "../actions/action_error_info.hpp"
+#include "../actions/action_vars.hpp"
 
 namespace osdui::config {
 namespace {
@@ -65,6 +70,35 @@ std::unique_ptr<IAction> make_action(std::wstring_view type, const pugi::xml_nod
         if (auto v = node.attribute(L"Variable"); v)
             action->set_variable(v.as_string());
         return action;
+    }
+
+    if (type == L"Match") {
+        auto action = std::make_unique<actions::MatchAction>();
+        action->set_input_variable(node.attribute(L"Variable").as_string());
+        action->set_output_variable(node.attribute(L"MatchVariable").as_string());
+        for (const auto& c : node.children(L"Match"))
+            action->add_pattern(c.attribute(L"Pattern").as_string(),
+                                c.attribute(L"Variable").as_string());
+        return action;
+    }
+    if (type == L"TSVar") {
+        return std::make_unique<actions::TSVarAction>();
+    }
+    if (type == L"TSVarList") {
+        auto action = std::make_unique<actions::TSVarListAction>();
+        action->set_base(node.attribute(L"Variable").as_string());
+        action->set_operation(node.attribute(L"ListType").as_string());
+        action->set_value(node.attribute(L"Value").as_string());
+        return action;
+    }
+    if (type == L"ErrorInfo") {
+        auto action = std::make_unique<actions::ErrorInfoAction>();
+        action->set_title(node.attribute(L"Title").as_string());
+        action->set_text(node.attribute(L"ErrorText").as_string());
+        return action;
+    }
+    if (type == L"Vars") {
+        return std::make_unique<actions::VarsAction>();
     }
 
     static const std::vector<std::wstring> known_types = {

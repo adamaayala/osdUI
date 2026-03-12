@@ -26,4 +26,11 @@ target_sources(osdui-core PRIVATE
   src/actions/action_wmi_read.cpp
   src/actions/action_wmi_write.cpp
   src/actions/action_file_read.cpp
+  src/actions/action_software_discovery.cpp
+  src/actions/action_match.cpp
+  src/actions/action_ts_var.cpp
+  src/actions/action_ts_var_list.cpp
+  src/actions/action_save_items.cpp
+  src/actions/action_error_info.cpp
+  src/actions/action_vars.cpp
 )
