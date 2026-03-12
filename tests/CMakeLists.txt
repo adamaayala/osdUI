@@ -17,6 +17,8 @@ add_executable(osdui-tests
   test_action_rest.cpp
   test_action_user_input.cpp
   test_action_preflight.cpp
+  test_action_user_info.cpp
+  test_action_app_tree.cpp
 )
 
 target_link_libraries(osdui-tests
