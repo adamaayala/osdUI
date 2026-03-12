@@ -15,4 +15,5 @@ target_link_libraries(osdui-core
 target_sources(osdui-core PRIVATE
   src/logging/cm_log.cpp
   src/config/config_parser.cpp
+  src/script/condition_evaluator.cpp
 )

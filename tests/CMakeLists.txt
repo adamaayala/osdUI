@@ -4,6 +4,7 @@ add_executable(osdui-tests
   test_stub.cpp   # replaced by real tests in Chunk 2+
   test_interfaces_compile.cpp
   test_config_parser.cpp
+  test_condition_evaluator.cpp
 )
 
 target_link_libraries(osdui-tests
