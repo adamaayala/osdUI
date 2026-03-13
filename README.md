@@ -24,8 +24,8 @@ All of the following must be installed on a **Windows** machine. Building on mac
 | Requirement | Version | Notes |
 |-------------|---------|-------|
 | Windows 10/11 or Windows Server | Any current | Build machine only; the output runs on WinPE |
-| Visual Studio 2022 | 17.x | Workload: **Desktop development with C++** |
-| CMake | 3.25+ | Included with VS 2022, or install separately |
+| Visual Studio 2026 | 18.x | Workload: **Desktop development with C++** |
+| CMake | 3.25+ | Included with VS 2026, or install separately |
 | vcpkg | Any current | See setup below |
 
 ### vcpkg Setup (one-time)

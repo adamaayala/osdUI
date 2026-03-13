@@ -25,7 +25,7 @@ A good bug report lets someone reproduce the problem without asking follow-up qu
 
 | Field | Example |
 |-------|---------|
-| osdUI version / commit | `7776fd9` or `v1.0.0` |
+| osdUI version / commit | `561b9eb` or `v1.0.0` |
 | SCCM / ConfigMgr version | `2309 (5.00.9106)` |
 | WinPE version | `WinPE 10 (ADK 10.1.26100)` |
 | Target hardware make/model | `HP EliteBook 840 G10` |

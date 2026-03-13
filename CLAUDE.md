@@ -8,7 +8,7 @@ osdUI is a Windows C++20 application that provides a graphical user interface fo
 
 ## Build Requirements
 
-- **Visual Studio 2022** (generator: `Visual Studio 17 2022`)
+- **Visual Studio 2026** (generator: `Visual Studio 18 2026`)
 - **CMake 3.25+**
 - **vcpkg** for dependency management (triplet: `x64-windows-static`)
 - **Platform**: x64 only
