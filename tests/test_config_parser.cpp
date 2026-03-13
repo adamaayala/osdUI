@@ -27,7 +27,6 @@ TEST_CASE("ConfigParser: TSVar setter parsed - sets variable, no dialog") {
     REQUIRE(graph.nodes.size() == 2);
 
     using namespace osdui;
-    using namespace osdui::actions;
     using namespace osdui::test;
     MapVariableStore vars;
     ScriptedDialogPresenter dlg;
