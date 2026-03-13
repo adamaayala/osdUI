@@ -8,6 +8,7 @@
 #include "mocks/mock_wmi.hpp"
 
 using namespace osdui;
+using namespace osdui::actions;
 using namespace osdui::test;
 
 static ActionContext make_ctx(IVariableStore& v, IDialogPresenter& d,
