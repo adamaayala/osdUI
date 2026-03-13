@@ -6,10 +6,13 @@ namespace osdui::actions {
 
 class TSVarAction : public IAction {
 public:
-    // Call these when XML has Variable= attribute (set-variable mode).
-    // Without calling set_variable(), execute() shows the viewer dialog.
-    void set_variable(std::wstring var) { variable_ = std::move(var); is_setter_ = true; }
-    void set_value(std::wstring val)    { value_ = std::move(val); }
+    // Call this when XML has Variable= attribute (set-variable mode).
+    // Without calling set_variable_and_value(), execute() shows the viewer dialog.
+    void set_variable_and_value(std::wstring var, std::wstring val) {
+        variable_ = std::move(var);
+        value_    = std::move(val);
+        is_setter_ = true;
+    }
 
     ActionResult execute(ActionContext& ctx) override;
 private:

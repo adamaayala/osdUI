@@ -1,7 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <osdui/action_graph.hpp>
 #include <filesystem>
-// ConfigParser not yet included — this will fail to compile first:
 #include "../../core/src/config/config_parser.hpp"
 #include "mocks/mock_variable_store.hpp"
 #include "mocks/mock_dialog_presenter.hpp"

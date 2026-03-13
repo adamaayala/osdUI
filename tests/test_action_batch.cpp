@@ -85,9 +85,6 @@ TEST_CASE("TSVarList: second append uses count 2") {
 // ── TSVar tests ───────────────────────────────────────────────────────────────
 
 TEST_CASE("TSVar: sets variable when Variable attribute present") {
-    using namespace osdui;
-    using namespace osdui::actions;
-    using namespace osdui::test;
     MapVariableStore vars;
     ScriptedDialogPresenter dlg;
     CapturingScriptHost sh;
@@ -95,8 +92,7 @@ TEST_CASE("TSVar: sets variable when Variable attribute present") {
     auto ctx = make_ctx(vars, dlg, sh, ce);
 
     TSVarAction action;
-    action.set_variable(L"MyVar");
-    action.set_value(L"42");
+    action.set_variable_and_value(L"MyVar", L"42");
     action.execute(ctx);
 
     REQUIRE(vars.get(L"MyVar") == L"42");
@@ -104,9 +100,6 @@ TEST_CASE("TSVar: sets variable when Variable attribute present") {
 }
 
 TEST_CASE("TSVar: shows dialog when no Variable attribute") {
-    using namespace osdui;
-    using namespace osdui::actions;
-    using namespace osdui::test;
     MapVariableStore vars;
     ScriptedDialogPresenter dlg;
     dlg.enqueue({});   // must enqueue so mock doesn't throw
@@ -114,8 +107,9 @@ TEST_CASE("TSVar: shows dialog when no Variable attribute") {
     LiteralConditionEvaluator ce;
     auto ctx = make_ctx(vars, dlg, sh, ce);
 
-    TSVarAction action;  // no set_variable() call
+    TSVarAction action;  // no set_variable_and_value() call — viewer mode
     action.execute(ctx);
 
     REQUIRE(dlg.calls_made() == 1);
+    REQUIRE(dlg.last_spec().type == model::DialogType::TsVar);
 }
