@@ -106,7 +106,12 @@ std::unique_ptr<IAction> make_action(std::wstring_view type, const pugi::xml_nod
     }
 
     if (type == L"TSVar") {
-        return std::make_unique<actions::TSVarAction>();
+        auto action = std::make_unique<actions::TSVarAction>();
+        if (auto v = node.attribute("Variable"); v) {
+            action->set_variable(to_wide(v.as_string()));
+            action->set_value(to_wide(node.text().as_string()));
+        }
+        return action;
     }
 
     if (type == L"TSVarList") {

@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include "../../core/src/actions/action_match.hpp"
 #include "../../core/src/actions/action_ts_var_list.hpp"
+#include "../../core/src/actions/action_ts_var.hpp"
 #include "mocks/mock_variable_store.hpp"
 #include "mocks/mock_dialog_presenter.hpp"
 #include "mocks/mock_script_host.hpp"
@@ -79,4 +80,42 @@ TEST_CASE("TSVarList: second append uses count 2") {
 
     REQUIRE(vars.get(L"OSDAppList") == L"2");
     REQUIRE(vars.get(L"OSDAppList002") == L"7-Zip");
+}
+
+// ── TSVar tests ───────────────────────────────────────────────────────────────
+
+TEST_CASE("TSVar: sets variable when Variable attribute present") {
+    using namespace osdui;
+    using namespace osdui::actions;
+    using namespace osdui::test;
+    MapVariableStore vars;
+    ScriptedDialogPresenter dlg;
+    CapturingScriptHost sh;
+    LiteralConditionEvaluator ce;
+    auto ctx = make_ctx(vars, dlg, sh, ce);
+
+    TSVarAction action;
+    action.set_variable(L"MyVar");
+    action.set_value(L"42");
+    action.execute(ctx);
+
+    REQUIRE(vars.get(L"MyVar") == L"42");
+    REQUIRE(dlg.calls_made() == 0);  // dialog must NOT have been shown
+}
+
+TEST_CASE("TSVar: shows dialog when no Variable attribute") {
+    using namespace osdui;
+    using namespace osdui::actions;
+    using namespace osdui::test;
+    MapVariableStore vars;
+    ScriptedDialogPresenter dlg;
+    dlg.enqueue({});   // must enqueue so mock doesn't throw
+    CapturingScriptHost sh;
+    LiteralConditionEvaluator ce;
+    auto ctx = make_ctx(vars, dlg, sh, ce);
+
+    TSVarAction action;  // no set_variable() call
+    action.execute(ctx);
+
+    REQUIRE(dlg.calls_made() == 1);
 }

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UIpp>
+  <Actions>
+    <Action Type="TSVar" Variable="BuildStep">5</Action>
+    <Action Type="TSVar" />
+  </Actions>
+</UIpp>
