@@ -1,4 +1,9 @@
 #include "config_parser.hpp"
+#ifdef _WIN32
+#  include <windows.h>
+#else
+#  include <cstring>
+#endif
 #include <pugixml.hpp>
 #include <format>
 #include <string_view>
