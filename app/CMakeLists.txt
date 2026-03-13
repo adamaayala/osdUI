@@ -6,6 +6,7 @@ target_sources(osdui PRIVATE
   platform/ts_variables.cpp
   platform/env_variables.cpp
   platform/wsh_script_host.cpp
+  platform/wmi_client.cpp
   dialogs/dialog_presenter.cpp
   dialogs/dialog_user_input.cpp
   dialogs/dialog_user_info.cpp

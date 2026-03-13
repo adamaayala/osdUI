@@ -10,6 +10,7 @@
 #include "platform/ts_variables.hpp"
 #include "platform/env_variables.hpp"
 #include "platform/wsh_script_host.hpp"
+#include "platform/wmi_client.hpp"
 #include "dialogs/dialog_presenter.hpp"
 
 #include <optional>
@@ -70,7 +71,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR lpCmdLine, int)
         auto com_cleanup = wil::scope_exit([] { CoUninitialize(); });
 
         osdui::config::ConfigParser parser;
-        auto graph = parser.parse(config_path);
+        osdui::platform::WmiClient wmi;
+        auto graph = parser.parse(config_path, &wmi);
 
         // Try to connect to the SCCM task sequence environment.
         // Fall back to process environment variables when TSManager.exe is not
