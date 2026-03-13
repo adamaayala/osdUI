@@ -21,9 +21,10 @@ std::optional<std::wstring> WmiClient::query(std::wstring_view wql,
                                 0, nullptr, nullptr, &services);
     if (FAILED(hr)) return std::nullopt;
 
-    CoSetProxyBlanket(services.get(), RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE,
-                      nullptr, RPC_C_AUTHN_LEVEL_CALL,
-                      RPC_C_IMP_LEVEL_IMPERSONATE, nullptr, EOAC_NONE);
+    hr = CoSetProxyBlanket(services.get(), RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE,
+                           nullptr, RPC_C_AUTHN_LEVEL_CALL,
+                           RPC_C_IMP_LEVEL_IMPERSONATE, nullptr, EOAC_NONE);
+    if (FAILED(hr)) return std::nullopt;
 
     std::wstring wql_str{wql};
     wil::unique_bstr query_bstr{SysAllocString(wql_str.c_str())};

@@ -36,6 +36,7 @@ static std::wstring to_wide(const char* s) {
     if (!s || *s == '\0') return {};
 #ifdef _WIN32
     int len = ::MultiByteToWideChar(CP_UTF8, 0, s, -1, nullptr, 0);
+    if (len <= 0) return {};
     std::wstring result(static_cast<std::size_t>(len) - 1, L'\0');
     ::MultiByteToWideChar(CP_UTF8, 0, s, -1, result.data(), len);
     return result;
