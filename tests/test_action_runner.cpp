@@ -54,7 +54,7 @@ TEST_CASE("ActionRunner skips action with false condition") {
     REQUIRE_FALSE(ran);
 }
 
-TEST_CASE("ActionRunner handles JumpTo — skips intervening nodes") {
+TEST_CASE("ActionRunner handles JumpTo - skips intervening nodes") {
     ActionGraph graph;
     bool skipped_ran = false;
     bool target_ran  = false;
