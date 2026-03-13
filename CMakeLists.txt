@@ -8,6 +8,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Static CRT for WinPE compatibility
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
+# Prevent windows.h from defining min/max macros (breaks std::numeric_limits)
+add_compile_definitions(NOMINMAX WIN32_LEAN_AND_MEAN)
+
 find_package(pugixml CONFIG REQUIRED)
 find_package(CURL CONFIG REQUIRED)
 find_package(wil CONFIG REQUIRED)

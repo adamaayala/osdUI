@@ -26,7 +26,10 @@ target_link_libraries(osdui-tests
           Catch2::Catch2WithMain
 )
 
-target_include_directories(osdui-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(osdui-tests PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_SOURCE_DIR}/core/src
+)
 
 target_compile_definitions(osdui-tests PRIVATE
   FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures"

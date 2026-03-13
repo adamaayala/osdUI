@@ -21,6 +21,8 @@ target_include_directories(osdui PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/resources
 )
 
+target_compile_definitions(osdui PRIVATE UNICODE _UNICODE)
+
 target_link_libraries(osdui PRIVATE
   osdui-core
   WIL::WIL
