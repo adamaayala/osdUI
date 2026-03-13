@@ -26,21 +26,25 @@ static std::wstring widen(const char* s) {
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR lpCmdLine, int)
 {
     // Initialize common controls (ListView, TreeView used in dialogs)
-    INITCOMMONCONTROLSEX icc{sizeof(INITCOMMONCONTROLSEX), ICC_WIN95_CLASSES};
-    InitCommonControlsEx(&icc);
-
-    // Initialize COM for this thread (required by TsVariables and WshScriptHost)
-    THROW_IF_FAILED(CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED));
+    INITCOMMONCONTROLSEX icc{sizeof(INITCOMMONCONTROLSEX),
+                             ICC_LISTVIEW_CLASSES | ICC_TREEVIEW_CLASSES};
+    THROW_HR_IF(E_FAIL, !InitCommonControlsEx(&icc));
 
     // Parse command line: /config:<path> /log:<path>
     // Handles quoted paths: /config:"C:\path with spaces\UI++.xml"
+    // Uses word-boundary matching to avoid false matches inside quoted values.
     std::wstring config_path = L"UI++.xml";
     std::wstring log_path    = L"osdui.log";
 
     std::wstring cmdline{lpCmdLine};
     auto get_arg = [&](std::wstring_view prefix) -> std::optional<std::wstring> {
-        auto pos = cmdline.find(prefix);
-        if (pos == std::wstring::npos) return std::nullopt;
+        size_t pos = 0;
+        while (true) {
+            pos = cmdline.find(prefix, pos);
+            if (pos == std::wstring::npos) return std::nullopt;
+            if (pos == 0 || cmdline[pos - 1] == L' ') break;  // word boundary
+            pos += prefix.size();
+        }
         pos += prefix.size();
         if (pos < cmdline.size() && cmdline[pos] == L'"') {
             ++pos;  // skip opening quote
@@ -58,6 +62,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR lpCmdLine, int)
 
     int exit_code = 1;
     try {
+        // COM init inside the guarded region so failures produce a clean exit code.
+        // scope_exit ensures CoUninitialize is called if init succeeds, even on exception.
+        THROW_IF_FAILED(CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED));
+        auto com_cleanup = wil::scope_exit([] { CoUninitialize(); });
+
         osdui::config::ConfigParser parser;
         auto graph = parser.parse(config_path);
 
@@ -74,11 +83,12 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR lpCmdLine, int)
         exit_code = succeeded ? 0 : 1;
 
     } catch (const osdui::config::ParseError& e) {
-        log.error(L"osdUI", widen(e.what()));
+        log.error(L"osdUI", L"Config parse error: " + widen(e.what()));
     } catch (const std::exception& e) {
         log.error(L"osdUI", widen(e.what()));
+    } catch (...) {
+        log.error(L"osdUI", L"Unknown error");
     }
 
-    CoUninitialize();
     return exit_code;
 }
