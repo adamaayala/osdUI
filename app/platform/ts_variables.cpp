@@ -18,9 +18,19 @@ TsVariables::TsVariables() {
     THROW_IF_FAILED(CLSIDFromProgID(L"Microsoft.SMS.TSEnvironment", &clsid));
 
     wil::com_ptr<IDispatch> dispatch;
-    THROW_IF_FAILED(CoCreateInstance(clsid, nullptr, CLSCTX_INPROC_SERVER,
-                                     IID_IDispatch,
-                                     reinterpret_cast<void**>(&dispatch)));
+    // TSEnvironment is an out-of-process COM server hosted in TSManager.exe.
+    // CLSCTX_ALL allows COM to reach the local server; CLSCTX_INPROC_SERVER
+    // would fail with ERROR_MOD_NOT_FOUND because there is no in-proc DLL.
+    HRESULT hr = CoCreateInstance(clsid, nullptr, CLSCTX_ALL,
+                                  IID_IDispatch,
+                                  reinterpret_cast<void**>(&dispatch));
+    if (FAILED(hr)) {
+        // Surface a clear message — the most common cause is running outside
+        // an active SCCM task sequence (TSManager.exe not running).
+        THROW_HR_MSG(hr,
+            "Cannot connect to Microsoft.SMS.TSEnvironment. "
+            "osdUI must run inside an active SCCM task sequence.");
+    }
     ts_env_ = std::move(dispatch);
 }
 
