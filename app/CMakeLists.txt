@@ -23,7 +23,7 @@ target_include_directories(osdui PRIVATE
 
 target_link_libraries(osdui PRIVATE
   osdui-core
-  Microsoft::WIL
+  WIL::WIL
   ole32.lib
   oleaut32.lib
   wbemuuid.lib

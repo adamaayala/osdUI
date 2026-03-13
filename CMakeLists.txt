@@ -10,7 +10,7 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 find_package(pugixml CONFIG REQUIRED)
 find_package(CURL CONFIG REQUIRED)
-find_package(WIL CONFIG REQUIRED)
+find_package(wil CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 
 add_subdirectory(core)
