@@ -7,6 +7,7 @@
 #include "../core/src/script/condition_evaluator.hpp"
 #include "../core/src/logging/cm_log.hpp"
 #include "platform/ts_variables.hpp"
+#include "platform/env_variables.hpp"
 #include "platform/wsh_script_host.hpp"
 #include "dialogs/dialog_presenter.hpp"
 
@@ -70,7 +71,21 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR lpCmdLine, int)
         osdui::config::ConfigParser parser;
         auto graph = parser.parse(config_path);
 
-        osdui::platform::TsVariables      vars;
+        // Try to connect to the SCCM task sequence environment.
+        // Fall back to process environment variables when TSManager.exe is not
+        // running (e.g. local testing on a full Windows machine).
+        std::unique_ptr<IVariableStore> vars_ptr;
+        try {
+            vars_ptr = std::make_unique<osdui::platform::TsVariables>();
+            log.info(L"osdUI", L"Connected to Microsoft.SMS.TSEnvironment");
+        } catch (...) {
+            log.info(L"osdUI",
+                L"Microsoft.SMS.TSEnvironment unavailable — "
+                L"falling back to process environment variables");
+            vars_ptr = std::make_unique<osdui::platform::EnvVariables>();
+        }
+        IVariableStore& vars = *vars_ptr;
+
         osdui::platform::WshScriptHost    scripts;
         osdui::dialogs::DialogPresenter   dialogs{hInstance};
         osdui::script::ConditionEvaluator conditions;
