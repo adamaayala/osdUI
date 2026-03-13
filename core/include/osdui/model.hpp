@@ -48,6 +48,13 @@ struct InputSpec {
     bool          required{false};
     std::wstring  condition;      // optional: shown only when condition is true
     std::vector<DropdownItem> items;  // for Dropdown
+
+    // Extended attributes from real UI++ XML
+    std::wstring  hint;            // Hint= watermark/tooltip text
+    std::wstring  regex;           // RegEx= validation pattern
+    std::wstring  force_case;      // ForceCase= Upper/Lower/No
+    std::wstring  checked_value;   // CheckedValue= for Checkbox
+    std::wstring  unchecked_value; // UncheckedValue= for Checkbox
 };
 
 // ── Dialog spec (passed to IDialogPresenter) ─────────────────────────────────
