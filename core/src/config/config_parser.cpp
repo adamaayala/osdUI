@@ -1,6 +1,7 @@
 #include "config_parser.hpp"
 #include <pugixml.hpp>
 #include <format>
+#include <string_view>
 #include <vector>
 #include "../actions/action_default_values.hpp"
 #include "../actions/action_external_call.hpp"
@@ -20,117 +21,130 @@
 namespace osdui::config {
 namespace {
 
+// Convert narrow UTF-8 string (from pugixml) to wide string.
+// pugixml's default char_t is char (narrow), so all .as_string() calls
+// return const char*. Action setters take std::wstring.
+static std::wstring to_wide(const char* s) {
+    if (!s || *s == '\0') return {};
+#ifdef _WIN32
+    int len = ::MultiByteToWideChar(CP_UTF8, 0, s, -1, nullptr, 0);
+    std::wstring result(static_cast<std::size_t>(len) - 1, L'\0');
+    ::MultiByteToWideChar(CP_UTF8, 0, s, -1, result.data(), len);
+    return result;
+#else
+    // Fallback for non-Windows (tests on macOS/Linux) — assume ASCII-safe
+    return std::wstring(s, s + std::strlen(s));
+#endif
+}
+
+static std::wstring attr(const pugi::xml_node& node, const char* name) {
+    return to_wide(node.attribute(name).as_string());
+}
+
 // Stub: return a non-null placeholder for known types so tests pass.
-// Real factories replace individual branches in Chunk 5+.
 // NOTE: RestAction requires IHttpClient injection and cannot be instantiated
 // here without access to a client instance. "Rest" maps to PlaceholderAction
 // for now; wiring happens in main.cpp (Chunk 7).
 std::unique_ptr<IAction> make_action(std::wstring_view type, const pugi::xml_node& node) {
-    // Handle DefaultValues first with full implementation
     if (type == L"DefaultValues") {
         auto action = std::make_unique<actions::DefaultValuesAction>();
-        for (const auto& var : node.children(L"Variable")) {
-            action->add(var.attribute(L"Name").as_string(),
-                        var.attribute(L"Value").as_string());
-        }
+        for (const auto& var : node.children("Variable"))
+            action->add(attr(var, "Name"), attr(var, "Value"));
         return action;
     }
 
-    // Handle ExternalCall with full implementation
     if (type == L"ExternalCall") {
         auto action = std::make_unique<actions::ExternalCallAction>();
-        action->set_run(node.attribute(L"Run").as_string());
-        if (auto v = node.attribute(L"Variable"); v)
-            action->set_variable(v.as_string());
-        if (auto e = node.attribute(L"SuccessExitCode"); e)
+        action->set_run(attr(node, "Run"));
+        if (auto v = node.attribute("Variable"); v)
+            action->set_variable(to_wide(v.as_string()));
+        if (auto e = node.attribute("SuccessExitCode"); e)
             action->set_success_exit_code(e.as_int());
         return action;
     }
 
-    // Handle Switch with full implementation
     if (type == L"Switch") {
         auto action = std::make_unique<actions::SwitchAction>();
-        action->set_variable(node.attribute(L"Variable").as_string());
-        for (const auto& c : node.children(L"Case"))
-            action->add_case(c.attribute(L"Value").as_string(),
-                             c.attribute(L"GoTo").as_string());
-        if (auto def = node.child(L"Default"); def)
-            action->set_default(def.attribute(L"GoTo").as_string());
+        action->set_variable(attr(node, "Variable"));
+        for (const auto& c : node.children("Case"))
+            action->add_case(attr(c, "Value"), attr(c, "GoTo"));
+        if (auto def = node.child("Default"); def)
+            action->set_default(attr(def, "GoTo"));
         return action;
     }
 
-    // Handle RandomString with full implementation
     if (type == L"RandomString") {
         auto action = std::make_unique<actions::RandomStringAction>();
-        action->set_variable(node.attribute(L"Variable").as_string());
-        if (auto l = node.attribute(L"Length"); l)
+        action->set_variable(attr(node, "Variable"));
+        if (auto l = node.attribute("Length"); l)
             action->set_length(l.as_int(8));
-        if (auto cs = node.attribute(L"CharSet"); cs)
-            action->set_charset(cs.as_string());
+        if (auto cs = node.attribute("CharSet"); cs)
+            action->set_charset(to_wide(cs.as_string()));
         return action;
     }
 
-    // Handle FileRead with full implementation
     if (type == L"FileRead") {
         auto action = std::make_unique<actions::FileReadAction>();
-        action->set_path(node.attribute(L"Path").as_string());
-        if (auto v = node.attribute(L"Variable"); v)
-            action->set_variable(v.as_string());
+        action->set_path(attr(node, "Path"));
+        if (auto v = node.attribute("Variable"); v)
+            action->set_variable(to_wide(v.as_string()));
         return action;
     }
 
     if (type == L"Match") {
         auto action = std::make_unique<actions::MatchAction>();
-        action->set_input_variable(node.attribute(L"Variable").as_string());
-        action->set_output_variable(node.attribute(L"MatchVariable").as_string());
-        for (const auto& c : node.children(L"Match"))
-            action->add_pattern(c.attribute(L"Pattern").as_string(),
-                                c.attribute(L"Variable").as_string());
+        action->set_input_variable(attr(node, "Variable"));
+        action->set_output_variable(attr(node, "MatchVariable"));
+        for (const auto& c : node.children("Match"))
+            action->add_pattern(attr(c, "Pattern"), attr(c, "Variable"));
         return action;
     }
+
     if (type == L"TSVar") {
         return std::make_unique<actions::TSVarAction>();
     }
+
     if (type == L"TSVarList") {
         auto action = std::make_unique<actions::TSVarListAction>();
-        action->set_base(node.attribute(L"Variable").as_string());
-        action->set_operation(node.attribute(L"ListType").as_string());
-        action->set_value(node.attribute(L"Value").as_string());
+        action->set_base(attr(node, "Variable"));
+        action->set_operation(attr(node, "ListType"));
+        action->set_value(attr(node, "Value"));
         return action;
     }
+
     if (type == L"ErrorInfo") {
         auto action = std::make_unique<actions::ErrorInfoAction>();
-        action->set_title(node.attribute(L"Title").as_string());
-        action->set_text(node.attribute(L"ErrorText").as_string());
+        action->set_title(attr(node, "Title"));
+        action->set_text(attr(node, "ErrorText"));
         return action;
     }
+
     if (type == L"Vars") {
         return std::make_unique<actions::VarsAction>();
     }
 
     if (type == L"Input") {
         auto action = std::make_unique<actions::UserInputAction>();
-        action->set_title(node.attribute(L"Title").as_string());
-        action->set_banner_title(node.attribute(L"BannerTitle").as_string());
-        action->set_banner_text(node.attribute(L"BannerText").as_string());
-        bool allow_cancel = std::wstring{node.attribute(L"AllowCancel").as_string()} == L"true";
-        action->set_allow_cancel(allow_cancel);
-        for (const auto& field : node.children(L"InputField")) {
+        action->set_title(attr(node, "Title"));
+        action->set_banner_title(attr(node, "BannerTitle"));
+        action->set_banner_text(attr(node, "BannerText"));
+        action->set_allow_cancel(std::string_view{node.attribute("AllowCancel").as_string()} == "true");
+        for (const auto& field : node.children("InputField")) {
             model::InputSpec spec;
-            spec.variable      = field.attribute(L"Variable").as_string();
-            spec.label         = field.attribute(L"Prompt").as_string();
-            spec.default_value = field.attribute(L"Default").as_string();
-            spec.required      = std::wstring{field.attribute(L"Required").as_string()} == L"true";
-            std::wstring ft    = field.attribute(L"Type").as_string();
-            if      (ft == L"DropDownList") spec.type = model::InputType::Dropdown;
-            else if (ft == L"Password")     spec.type = model::InputType::Password;
-            else if (ft == L"CheckBox")     spec.type = model::InputType::Checkbox;
-            else if (ft == L"Info")         spec.type = model::InputType::Info;
-            else                            spec.type = model::InputType::Text;
-            for (const auto& opt : field.children(L"Option")) {
+            spec.variable      = attr(field, "Variable");
+            spec.label         = attr(field, "Prompt");
+            spec.default_value = attr(field, "Default");
+            spec.required      = std::string_view{field.attribute("Required").as_string()} == "true";
+            std::string_view ft = field.attribute("Type").as_string();
+            if      (ft == "DropDownList") spec.type = model::InputType::Dropdown;
+            else if (ft == "Password")     spec.type = model::InputType::Password;
+            else if (ft == "CheckBox")     spec.type = model::InputType::Checkbox;
+            else if (ft == "Info")         spec.type = model::InputType::Info;
+            else                           spec.type = model::InputType::Text;
+            for (const auto& opt : field.children("Option")) {
                 model::DropdownItem item;
-                item.value   = opt.attribute(L"Value").as_string();
-                item.display = opt.attribute(L"Text").as_string();
+                item.value   = attr(opt, "Value");
+                item.display = attr(opt, "Text");
                 spec.items.push_back(std::move(item));
             }
             action->add_input(std::move(spec));
@@ -140,26 +154,27 @@ std::unique_ptr<IAction> make_action(std::wstring_view type, const pugi::xml_nod
 
     if (type == L"Info") {
         auto action = std::make_unique<actions::UserInfoAction>();
-        action->set_title(node.attribute(L"Title").as_string());
-        action->set_message(node.attribute(L"Message").as_string());
+        action->set_title(attr(node, "Title"));
+        action->set_message(attr(node, "Message"));
         return action;
     }
+
     if (type == L"InfoFullScreen") {
         auto action = std::make_unique<actions::InfoFullScreenAction>();
-        action->set_title(node.attribute(L"Title").as_string());
-        action->set_message(node.attribute(L"Message").as_string());
+        action->set_title(attr(node, "Title"));
+        action->set_message(attr(node, "Message"));
         return action;
     }
 
     if (type == L"Preflight") {
         auto action = std::make_unique<actions::PreflightAction>();
-        std::wstring cont = node.attribute(L"ContinueOnFail").as_string();
-        action->set_continue_on_fail(cont == L"true");
-        for (const auto& check_node : node.children(L"Check")) {
+        action->set_continue_on_fail(
+            std::string_view{node.attribute("ContinueOnFail").as_string()} == "true");
+        for (const auto& check_node : node.children("Check")) {
             model::PreflightItem item;
-            item.name           = check_node.attribute(L"Name").as_string();
-            item.condition      = check_node.attribute(L"Condition").as_string();
-            item.warn_condition = check_node.attribute(L"WarnCondition").as_string();
+            item.name           = attr(check_node, "Name");
+            item.condition      = attr(check_node, "Condition");
+            item.warn_condition = attr(check_node, "WarnCondition");
             action->add_check(std::move(item));
         }
         return action;
@@ -167,13 +182,13 @@ std::unique_ptr<IAction> make_action(std::wstring_view type, const pugi::xml_nod
 
     if (type == L"AppTree") {
         auto action = std::make_unique<actions::AppTreeAction>();
-        action->set_title(node.attribute(L"Title").as_string());
-        for (const auto& sw : node.children(L"Software")) {
+        action->set_title(attr(node, "Title"));
+        for (const auto& sw : node.children("Software")) {
             model::SoftwareItem item;
-            item.id       = sw.attribute(L"id").as_string();
-            item.name     = sw.attribute(L"Name").as_string();
-            item.category = sw.attribute(L"Category").as_string();
-            item.required = std::wstring{sw.attribute(L"Required").as_string()} == L"true";
+            item.id       = attr(sw, "id");
+            item.name     = attr(sw, "Name");
+            item.category = attr(sw, "Category");
+            item.required = std::string_view{sw.attribute("Required").as_string()} == "true";
             action->add_software(std::move(item));
         }
         return action;
@@ -207,18 +222,18 @@ ActionGraph ConfigParser::parse(const std::filesystem::path& path) const {
             path.string(), result.description())};
 
     ActionGraph graph;
-    auto actions_node = doc.child(L"UIpp").child(L"Actions");
+    auto actions_node = doc.child("UIpp").child("Actions");
     if (!actions_node)
         throw ParseError{"XML missing <UIpp><Actions> structure"};
 
-    for (const auto& action_node : actions_node.children(L"Action")) {
-        std::wstring type = action_node.attribute(L"Type").as_string();
-        std::wstring id   = action_node.attribute(L"id").as_string();
+    for (const auto& action_node : actions_node.children("Action")) {
+        std::wstring type = to_wide(action_node.attribute("Type").as_string());
+        std::wstring id   = to_wide(action_node.attribute("id").as_string());
 
         auto action = make_action(type, action_node);
         if (!action) continue;  // unknown type — skipped
 
-        action->condition = action_node.attribute(L"Condition").as_string();
+        action->condition = to_wide(action_node.attribute("Condition").as_string());
         graph.nodes.push_back({std::move(id), std::move(action)});
     }
     return graph;
