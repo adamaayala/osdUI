@@ -79,3 +79,30 @@ TEST_CASE("ConfigParser: Input parses InputText/InputChoice/InputCheckbox in ord
     CHECK(spec.inputs[2].checked_value    == L"True");
     CHECK(spec.inputs[2].unchecked_value  == L"False");
 }
+
+TEST_CASE("ConfigParser: AppTree resolves SoftwareRef against global catalog") {
+    osdui::config::ConfigParser parser;
+    auto graph = parser.parse(fixtures / "apptree_catalog.xml");
+    REQUIRE(graph.nodes.size() == 1);
+
+    using namespace osdui;
+    using namespace osdui::test;
+    MapVariableStore vars;
+    ScriptedDialogPresenter dlg;
+    dlg.enqueue({true, {}});
+    CapturingScriptHost sh;
+    LiteralConditionEvaluator ce;
+    ActionContext ctx{vars, dlg, sh, ce};
+    graph.nodes[0].action->execute(ctx);
+
+    const auto& spec = dlg.last_spec();
+    REQUIRE(spec.type == model::DialogType::AppTree);
+    REQUIRE(spec.groups.size() == 1);
+    CHECK(spec.groups[0].id             == L"Productivity");
+    CHECK(spec.groups[0].items.size()   == 2);
+    CHECK(spec.groups[0].items[0].id    == L"Office2024");
+    CHECK(spec.groups[0].items[0].name  == L"Microsoft Office 2024");
+    CHECK(spec.groups[0].items[0].default_selected == true);
+    CHECK(spec.groups[0].items[1].id    == L"Chrome");
+    CHECK(spec.groups[0].items[1].default_selected == false);
+}

@@ -51,7 +51,9 @@ static std::wstring attr(const pugi::xml_node& node, const char* name) {
 // NOTE: RestAction requires IHttpClient injection and cannot be instantiated
 // here without access to a client instance. "Rest" maps to PlaceholderAction
 // for now; wiring happens in main.cpp (Chunk 7).
-std::unique_ptr<IAction> make_action(std::wstring_view type, const pugi::xml_node& node) {
+std::unique_ptr<IAction> make_action(std::wstring_view type,
+                                     const pugi::xml_node& node,
+                                     const std::map<std::wstring, model::SoftwareItem>& catalog) {
     if (type == L"DefaultValues") {
         auto action = std::make_unique<actions::DefaultValuesAction>();
         for (const auto& var : node.children("Variable"))
@@ -232,9 +234,54 @@ std::unique_ptr<IAction> make_action(std::wstring_view type, const pugi::xml_nod
     if (type == L"AppTree") {
         auto action = std::make_unique<actions::AppTreeAction>();
         action->set_title(attr(node, "Title"));
-        // TODO(Task 5): parse SoftwareSets > Set > SoftwareGroup > SoftwareRef
-        // and call action->add_group(...) with fully resolved SoftwareGroup objects.
-        // For now, return the action with no groups so it compiles cleanly.
+
+        // Parse SoftwareSets > Set > SoftwareGroup > SoftwareRef
+        for (const auto& set : node.child("SoftwareSets").children("Set")) {
+            for (const auto& grp_node : set.children("SoftwareGroup")) {
+                model::SoftwareGroup grp;
+                grp.id               = attr(grp_node, "Id");
+                grp.label            = attr(grp_node, "Label");
+                grp.default_expanded = std::string_view{grp_node.attribute("Default").as_string()} == "True";
+                grp.required         = std::string_view{grp_node.attribute("Required").as_string()} == "True";
+
+                for (const auto& ref : grp_node.children("SoftwareRef")) {
+                    std::wstring ref_id = to_wide(ref.attribute("Id").as_string());
+                    model::SoftwareItem item;
+                    if (auto it = catalog.find(ref_id); it != catalog.end()) {
+                        item = it->second;  // start from catalog entry
+                    } else {
+                        item.id   = ref_id;
+                        item.name = ref_id;  // unknown id: use id as placeholder
+                    }
+                    // SoftwareRef attributes override catalog defaults
+                    item.default_selected = std::string_view{ref.attribute("Default").as_string()} == "True";
+                    item.hidden           = std::string_view{ref.attribute("Hidden").as_string()} == "True";
+                    item.required         = std::string_view{ref.attribute("Required").as_string()} == "True";
+                    grp.items.push_back(std::move(item));
+                }
+                action->add_group(std::move(grp));
+            }
+        }
+
+        // Backwards-compat: direct <Software> children (all collected into one group)
+        bool has_flat = false;
+        for (const auto& sw : node.children("Software")) {
+            has_flat = true; (void)sw; break;
+        }
+        if (has_flat) {
+            model::SoftwareGroup grp;
+            grp.id = L"__flat__";
+            for (const auto& sw : node.children("Software")) {
+                model::SoftwareItem item;
+                item.id       = attr(sw, "id");
+                item.name     = attr(sw, "Name");
+                item.category = attr(sw, "Category");
+                item.required = std::string_view{sw.attribute("Required").as_string()} == "true";
+                grp.items.push_back(std::move(item));
+            }
+            action->add_group(std::move(grp));
+        }
+
         return action;
     }
 
@@ -265,8 +312,20 @@ ActionGraph ConfigParser::parse(const std::filesystem::path& path) const {
         throw ParseError{std::format("Failed to parse '{}': {}",
             path.string(), result.description())};
 
+    auto root = doc.child("UIpp");
+
+    // Build software catalog from <UIpp><Software><Application> elements
+    std::map<std::wstring, model::SoftwareItem> catalog;
+    for (const auto& app : root.child("Software").children("Application")) {
+        model::SoftwareItem item;
+        item.id    = to_wide(app.attribute("Id").as_string());
+        item.label = to_wide(app.attribute("Label").as_string());
+        item.name  = to_wide(app.attribute("Name").as_string());
+        catalog[item.id] = item;
+    }
+
     ActionGraph graph;
-    auto actions_node = doc.child("UIpp").child("Actions");
+    auto actions_node = root.child("Actions");
     if (!actions_node)
         throw ParseError{"XML missing <UIpp><Actions> structure"};
 
@@ -274,7 +333,7 @@ ActionGraph ConfigParser::parse(const std::filesystem::path& path) const {
         std::wstring type = to_wide(action_node.attribute("Type").as_string());
         std::wstring id   = to_wide(action_node.attribute("id").as_string());
 
-        auto action = make_action(type, action_node);
+        auto action = make_action(type, action_node, catalog);
         if (!action) continue;  // unknown type — skipped
 
         action->condition = to_wide(action_node.attribute("Condition").as_string());

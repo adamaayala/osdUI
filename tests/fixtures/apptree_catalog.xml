@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UIpp>
+  <Software>
+    <Application Id="Office2024" Label="Office 2024" Name="Microsoft Office 2024" />
+    <Application Id="Chrome"     Label="Google Chrome" Name="Google Chrome (Latest)" />
+  </Software>
+  <Actions>
+    <Action Type="AppTree" Title="Select Software">
+      <SoftwareSets>
+        <Set>
+          <SoftwareGroup Default="True" Id="Productivity" Label="Productivity" Required="False">
+            <SoftwareRef Id="Office2024" Default="True"  Hidden="False" Required="False" />
+            <SoftwareRef Id="Chrome"     Default="False" Hidden="False" Required="False" />
+          </SoftwareGroup>
+        </Set>
+      </SoftwareSets>
+    </Action>
+  </Actions>
+</UIpp>
