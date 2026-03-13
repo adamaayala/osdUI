@@ -23,6 +23,8 @@
 #include "../actions/action_user_info.hpp"
 #include "../actions/action_preflight.hpp"
 #include "../actions/action_app_tree.hpp"
+#include "../actions/action_wmi_read.hpp"
+#include "../actions/action_wmi_write.hpp"
 
 namespace osdui::config {
 namespace {
@@ -47,13 +49,23 @@ static std::wstring attr(const pugi::xml_node& node, const char* name) {
     return to_wide(node.attribute(name).as_string());
 }
 
+// No-op IWmi used when no real implementation is provided (e.g. in tests).
+struct NoopWmi : IWmi {
+    std::optional<std::wstring> query(std::wstring_view, std::wstring_view) const override {
+        return std::nullopt;
+    }
+    void set(std::wstring_view, std::wstring_view, std::wstring_view) override {}
+};
+static NoopWmi noop_wmi;
+
 // Stub: return a non-null placeholder for known types so tests pass.
 // NOTE: RestAction requires IHttpClient injection and cannot be instantiated
 // here without access to a client instance. "Rest" maps to PlaceholderAction
 // for now; wiring happens in main.cpp (Chunk 7).
 std::unique_ptr<IAction> make_action(std::wstring_view type,
                                      const pugi::xml_node& node,
-                                     const std::map<std::wstring, model::SoftwareItem>& catalog) {
+                                     const std::map<std::wstring, model::SoftwareItem>& catalog,
+                                     IWmi* wmi) {
     if (type == L"DefaultValues") {
         auto action = std::make_unique<actions::DefaultValuesAction>();
         for (const auto& var : node.children("Variable"))
@@ -285,6 +297,34 @@ std::unique_ptr<IAction> make_action(std::wstring_view type,
         return action;
     }
 
+    if (type == L"WMIRead") {
+        IWmi& wmi_ref = wmi ? *wmi : noop_wmi;
+        auto action = std::make_unique<actions::WmiReadAction>(wmi_ref);
+        std::wstring wql = attr(node, "Query");
+        if (wql.empty()) {
+            std::wstring cls = attr(node, "Class");
+            wql = L"SELECT " + attr(node, "Property") + L" FROM " + cls;
+        }
+        action->set_query(wql);
+        action->set_property(attr(node, "Property"));
+        action->set_variable(attr(node, "Variable"));
+        return action;
+    }
+
+    if (type == L"WMIWrite") {
+        IWmi& wmi_ref = wmi ? *wmi : noop_wmi;
+        auto action = std::make_unique<actions::WmiWriteAction>(wmi_ref);
+        std::wstring wql = attr(node, "Query");
+        if (wql.empty()) {
+            std::wstring cls = attr(node, "Class");
+            wql = L"SELECT " + attr(node, "Property") + L" FROM " + cls;
+        }
+        action->set_query(wql);
+        action->set_property(attr(node, "Property"));
+        action->set_value(attr(node, "Value"));
+        return action;
+    }
+
     static const std::vector<std::wstring> known_types = {
         L"DefaultValues", L"Input", L"Info", L"InfoFullScreen",
         L"AppTree", L"ExternalCall", L"Preflight", L"RegRead", L"RegWrite",
@@ -305,7 +345,7 @@ std::unique_ptr<IAction> make_action(std::wstring_view type,
 
 } // anon namespace
 
-ActionGraph ConfigParser::parse(const std::filesystem::path& path) const {
+ActionGraph ConfigParser::parse(const std::filesystem::path& path, IWmi* wmi) const {
     pugi::xml_document doc;
     pugi::xml_parse_result result = doc.load_file(path.c_str());
     if (!result)
@@ -333,7 +373,7 @@ ActionGraph ConfigParser::parse(const std::filesystem::path& path) const {
         std::wstring type = to_wide(action_node.attribute("Type").as_string());
         std::wstring id   = to_wide(action_node.attribute("id").as_string());
 
-        auto action = make_action(type, action_node, catalog);
+        auto action = make_action(type, action_node, catalog, wmi);
         if (!action) continue;  // unknown type — skipped
 
         action->condition = to_wide(action_node.attribute("Condition").as_string());
