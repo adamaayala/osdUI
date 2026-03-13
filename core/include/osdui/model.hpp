@@ -57,18 +57,6 @@ struct InputSpec {
     std::wstring  unchecked_value; // UncheckedValue= for Checkbox
 };
 
-// ── Dialog spec (passed to IDialogPresenter) ─────────────────────────────────
-
-struct DialogSpec {
-    DialogType type{DialogType::UserInput};
-    std::wstring title;
-    std::wstring banner_title;
-    std::wstring banner_text;
-    std::vector<InputSpec> inputs;
-    bool allow_cancel{false};
-    std::vector<SoftwareGroup> groups;  // AppTree only
-};
-
 // ── Preflight check ──────────────────────────────────────────────────────────
 
 enum class PreflightStatus { Pass, Warn, Fail };
@@ -98,6 +86,18 @@ struct SoftwareGroup {
     bool         default_expanded{false};
     bool         required{false};
     std::vector<SoftwareItem> items;
+};
+
+// ── Dialog spec (passed to IDialogPresenter) ─────────────────────────────────
+
+struct DialogSpec {
+    DialogType type{DialogType::UserInput};
+    std::wstring title;
+    std::wstring banner_title;
+    std::wstring banner_text;
+    std::vector<InputSpec> inputs;
+    bool allow_cancel{false};
+    std::vector<SoftwareGroup> groups;  // AppTree only
 };
 
 // ── Action spec (used by config parser to carry raw XML attributes) ───────────

@@ -6,6 +6,7 @@
 #endif
 #include <pugixml.hpp>
 #include <format>
+#include <map>
 #include <string_view>
 #include <vector>
 #include "../actions/action_default_values.hpp"
@@ -140,7 +141,7 @@ std::unique_ptr<IAction> make_action(std::wstring_view type, const pugi::xml_nod
         // Real XML uses ShowCancel=; legacy used AllowCancel= — accept both
         bool cancel =
             std::string_view{node.attribute("ShowCancel").as_string()} == "True" ||
-            std::string_view{node.attribute("AllowCancel").as_string()} == "true";
+            std::string_view{node.attribute("AllowCancel").as_string()} == "True";
         action->set_allow_cancel(cancel);
 
         for (const auto& field : node.children()) {
