@@ -2,6 +2,7 @@
 #include <commctrl.h>
 #include <wil/result.h>
 #include <osdui/action_graph.hpp>
+#include <osdui/interfaces.hpp>
 #include "../core/src/config/config_parser.hpp"
 #include "../core/src/actions/action_runner.hpp"
 #include "../core/src/script/condition_evaluator.hpp"
