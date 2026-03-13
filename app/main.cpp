@@ -75,7 +75,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR lpCmdLine, int)
         // Try to connect to the SCCM task sequence environment.
         // Fall back to process environment variables when TSManager.exe is not
         // running (e.g. local testing on a full Windows machine).
-        std::unique_ptr<IVariableStore> vars_ptr;
+        std::unique_ptr<osdui::IVariableStore> vars_ptr;
         try {
             vars_ptr = std::make_unique<osdui::platform::TsVariables>();
             log.info(L"osdUI", L"Connected to Microsoft.SMS.TSEnvironment");
@@ -85,7 +85,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR lpCmdLine, int)
                 L"falling back to process environment variables");
             vars_ptr = std::make_unique<osdui::platform::EnvVariables>();
         }
-        IVariableStore& vars = *vars_ptr;
+        osdui::IVariableStore& vars = *vars_ptr;
 
         osdui::platform::WshScriptHost    scripts;
         osdui::dialogs::DialogPresenter   dialogs{hInstance};
