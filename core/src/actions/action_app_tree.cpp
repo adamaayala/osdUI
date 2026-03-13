@@ -3,18 +3,13 @@
 namespace osdui::actions {
 
 ActionResult AppTreeAction::execute(ActionContext& ctx) {
-    model::DialogSpec spec{ .type = model::DialogType::AppTree, .title = title_ };
-    // Present the software list as info items — Win32 dialog shows tree
-    for (const auto& item : items_) {
-        spec.inputs.push_back(model::InputSpec{
-            .variable      = item.id,
-            .label         = item.name,
-            .type          = model::InputType::Info,
-            .default_value = item.required ? L"true" : L"",
-        });
-    }
+    model::DialogSpec spec;
+    spec.type   = model::DialogType::AppTree;
+    spec.title  = title_;
+    spec.groups = groups_;
     auto result = ctx.dialogs.present(spec, ctx.vars);
-    // Write selected items to vars based on DialogResult::values
+    if (!result.accepted) return {ActionOutcome::Abort};
+    // Write selected software back to TS variables
     for (const auto& [key, value] : result.values)
         ctx.vars.set(key, value);
     return {};

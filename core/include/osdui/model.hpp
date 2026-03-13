@@ -66,6 +66,7 @@ struct DialogSpec {
     std::wstring banner_text;
     std::vector<InputSpec> inputs;
     bool allow_cancel{false};
+    std::vector<SoftwareGroup> groups;  // AppTree only
 };
 
 // ── Preflight check ──────────────────────────────────────────────────────────
@@ -84,8 +85,19 @@ struct PreflightItem {
 struct SoftwareItem {
     std::wstring id;
     std::wstring name;
+    std::wstring label;           // display label (from catalog Application Label=)
     std::wstring category;
     bool         required{false};
+    bool         default_selected{false};
+    bool         hidden{false};
+};
+
+struct SoftwareGroup {
+    std::wstring id;
+    std::wstring label;
+    bool         default_expanded{false};
+    bool         required{false};
+    std::vector<SoftwareItem> items;
 };
 
 // ── Action spec (used by config parser to carry raw XML attributes) ───────────

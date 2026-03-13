@@ -231,14 +231,9 @@ std::unique_ptr<IAction> make_action(std::wstring_view type, const pugi::xml_nod
     if (type == L"AppTree") {
         auto action = std::make_unique<actions::AppTreeAction>();
         action->set_title(attr(node, "Title"));
-        for (const auto& sw : node.children("Software")) {
-            model::SoftwareItem item;
-            item.id       = attr(sw, "id");
-            item.name     = attr(sw, "Name");
-            item.category = attr(sw, "Category");
-            item.required = std::string_view{sw.attribute("Required").as_string()} == "true";
-            action->add_software(std::move(item));
-        }
+        // TODO(Task 5): parse SoftwareSets > Set > SoftwareGroup > SoftwareRef
+        // and call action->add_group(...) with fully resolved SoftwareGroup objects.
+        // For now, return the action with no groups so it compiles cleanly.
         return action;
     }
 
