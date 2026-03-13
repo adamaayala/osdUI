@@ -137,24 +137,63 @@ std::unique_ptr<IAction> make_action(std::wstring_view type, const pugi::xml_nod
         action->set_title(attr(node, "Title"));
         action->set_banner_title(attr(node, "BannerTitle"));
         action->set_banner_text(attr(node, "BannerText"));
-        action->set_allow_cancel(std::string_view{node.attribute("AllowCancel").as_string()} == "true");
-        for (const auto& field : node.children("InputField")) {
+        // Real XML uses ShowCancel=; legacy used AllowCancel= — accept both
+        bool cancel =
+            std::string_view{node.attribute("ShowCancel").as_string()} == "True" ||
+            std::string_view{node.attribute("AllowCancel").as_string()} == "true";
+        action->set_allow_cancel(cancel);
+
+        for (const auto& field : node.children()) {
+            std::string_view elem = field.name();
+            if (elem != "InputText" && elem != "InputChoice" &&
+                elem != "InputCheckbox" && elem != "InputField")
+                continue;
+
             model::InputSpec spec;
             spec.variable      = attr(field, "Variable");
-            spec.label         = attr(field, "Prompt");
             spec.default_value = attr(field, "Default");
-            spec.required      = std::string_view{field.attribute("Required").as_string()} == "true";
-            std::string_view ft = field.attribute("Type").as_string();
-            if      (ft == "DropDownList") spec.type = model::InputType::Dropdown;
-            else if (ft == "Password")     spec.type = model::InputType::Password;
-            else if (ft == "CheckBox")     spec.type = model::InputType::Checkbox;
-            else if (ft == "Info")         spec.type = model::InputType::Info;
-            else                           spec.type = model::InputType::Text;
-            for (const auto& opt : field.children("Option")) {
-                model::DropdownItem item;
-                item.value   = attr(opt, "Value");
-                item.display = attr(opt, "Text");
-                spec.items.push_back(std::move(item));
+            spec.required      = std::string_view{field.attribute("Required").as_string()} == "True" ||
+                                  std::string_view{field.attribute("Required").as_string()} == "true";
+            spec.hint          = attr(field, "Hint");
+            spec.regex         = attr(field, "RegEx");
+            spec.force_case    = attr(field, "ForceCase");
+
+            if (elem == "InputText") {
+                spec.label = attr(field, "Question");
+                bool pw    = std::string_view{field.attribute("Password").as_string()} == "True";
+                spec.type  = pw ? model::InputType::Password : model::InputType::Text;
+
+            } else if (elem == "InputChoice") {
+                spec.label = attr(field, "Question");
+                spec.type  = model::InputType::Dropdown;
+                for (const auto& opt : field.children("Choice")) {
+                    model::DropdownItem item;
+                    item.display = attr(opt, "Option");
+                    item.value   = attr(opt, "Value");
+                    spec.items.push_back(std::move(item));
+                }
+
+            } else if (elem == "InputCheckbox") {
+                spec.label           = attr(field, "Question");
+                spec.type            = model::InputType::Checkbox;
+                spec.checked_value   = attr(field, "CheckedValue");
+                spec.unchecked_value = attr(field, "UncheckedValue");
+
+            } else {
+                // InputField — legacy element name, used in tests/fixtures/basic.xml
+                spec.label = attr(field, "Prompt");  // legacy uses Prompt=
+                std::string_view ft = field.attribute("Type").as_string();
+                if      (ft == "DropDownList") spec.type = model::InputType::Dropdown;
+                else if (ft == "Password")     spec.type = model::InputType::Password;
+                else if (ft == "CheckBox")     spec.type = model::InputType::Checkbox;
+                else if (ft == "Info")         spec.type = model::InputType::Info;
+                else                           spec.type = model::InputType::Text;
+                for (const auto& opt : field.children("Option")) {
+                    model::DropdownItem item;
+                    item.value   = attr(opt, "Value");
+                    item.display = attr(opt, "Text");
+                    spec.items.push_back(std::move(item));
+                }
             }
             action->add_input(std::move(spec));
         }

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UIpp>
+  <Actions>
+    <Action Type="Input" Title="Setup" ShowCancel="False">
+      <InputText Variable="UserName" Question="Your Name" Default="John" Required="True"
+                 Hint="Enter full name" RegEx="^[A-Za-z]+" ForceCase="Upper" Password="False" />
+      <InputChoice Variable="OS" Question="OS Version" Default="Win11" Required="True">
+        <Choice Option="Windows 10" Value="Win10" />
+        <Choice Option="Windows 11" Value="Win11" />
+      </InputChoice>
+      <InputCheckbox Variable="EraseDisk" Question="Erase Disk?"
+                     CheckedValue="True" UncheckedValue="False" />
+    </Action>
+  </Actions>
+</UIpp>
